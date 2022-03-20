@@ -1,7 +1,7 @@
 import * as THREE from 'three'
 import { LineBasicMaterial, Scene, Vector3, Vector4 } from 'three'
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls'
-import { Camera4, Object4, renderVectorImage3, Scene4, VectorImageComponent3 } from './math/core'
+import { Camera4, InteractiveImage3Frame, Object4, renderVectorImage3, Scene4, VectorImageComponent3 } from './math/core'
 import { Grid4, Tesseract, RED, GREEN, BLUE, YELLOW, WHITE } from './math/primitives'
 
 const tesseract = new Tesseract('tesseract').withMaterial(WHITE);
@@ -47,41 +47,18 @@ function onWindowResize() {
     render()
 }
 
-window.addEventListener('keydown', onKeyDown, false);
-function onKeyDown(event: KeyboardEvent) {
-    var keyCode = event.which;
-    let speed = 0.02;
-    if (event.shiftKey) {
-        speed = -speed;
-    }
-    if (!event.ctrlKey) {
-        if (keyCode === 49) { // 1
-            camera4.move(0, speed);
-        }
-        if (keyCode === 50) { // 2
-            camera4.move(1, speed);
-        }
-        if (keyCode === 51) { // 3
-            camera4.move(2, speed);
-        }
-        if (keyCode === 52) { // 4
-            camera4.move(3, speed);
-        }
-    } else {
-        if (keyCode === 49) { // 1
-            camera4.tilt(0, speed);
-        }
-        if (keyCode === 50) { // 2
-            camera4.tilt(1, speed);
-        }
-        if (keyCode === 51) { // 3
-            camera4.tilt(2, speed);
-        }
-        if (keyCode === 52) { // 4
-            camera4.tilt(3, speed);
-        }
-    }
-}
+const frame = new InteractiveImage3Frame(0.5);
+
+window.addEventListener('keydown', (e) => {
+    camera4.keyboardEventHandler(e);
+}, false);
+window.addEventListener('keydown', (e) => {
+    frame.keyboardEventHandler('keydown', e);
+}, false);
+window.addEventListener('keyup', (e) => {
+    frame.keyboardEventHandler('keyup', e);
+}, false);
+
 
 function animate() {
     requestAnimationFrame(animate)
@@ -100,15 +77,7 @@ function animate() {
 function render() {
     const image3 = scene4.render();
     const scene = renderVectorImage3(image3);
-
-    const geometry = new THREE.BoxGeometry()
-    const material = new THREE.MeshBasicMaterial({
-        color: 0x00ff00,
-        wireframe: true,
-    })
-
-    const cube = new THREE.Mesh(geometry, material)
-    scene.add(cube)
+    frame.renderToScene3(scene);
     renderer.render(scene, camera)
 }
 animate()

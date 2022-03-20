@@ -2,19 +2,26 @@
 
 渲染一个四维空间在三维视窗上的投影，可通过键盘操作四维空间中视窗（相机）的位置和方向。
 
+基本操作：数字键小键盘：
+ - 1/4: 将相机沿着三维视窗的X轴前后移动（不改变相机的朝向）
+ - 2/5: Y轴；
+ - 3/6: Z轴；
+
+Ctrl +
+ - 1/4: 将相机向X轴的负/正方向倾斜（不改变相机的位置）
+ - 2/5: Y轴；
+ - 3/6: Z轴。
+
+三维视窗的边框将会出现相应的变化，以提示相机状态的改变。
+
 It uses webpack-dev-server for the development build, and NodeJS with Express for production build.
 
 Both server and client projects are written in TypeScript.
 
-![](docs/screengrab1.jpg)
 
 ## Installing
 
-1. Clone Repository
-
-```bash
-git clone https://github.com/Sean-Bradley/Three.js-TypeScript-Boilerplate.git
-```
+1. Clone this Repository
 
 2. CD into folder
 

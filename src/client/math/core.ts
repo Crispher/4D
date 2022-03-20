@@ -1,10 +1,6 @@
 import {
-    BufferGeometry,
     Vector3,
     Vector4,
-    Line,
-    LineBasicMaterial,
-    LineDashedMaterial,
     Scene
 } from 'three'
 import { LineMaterial } from 'three/examples/jsm/lines/LineMaterial';
@@ -30,6 +26,14 @@ function removeComponent(a: Vector4, b: Vector4) {
 }
 
 type Material = LineMaterial;
+
+function getLineMaterial(color: number, width: number = 0.002, dashed: boolean = false) {
+    return new LineMaterial({
+        color: color,
+        linewidth: width,
+        dashed: dashed
+    })
+}
 
 class Object4 {
     name: string;
@@ -63,7 +67,7 @@ class Camera4 {
     readonly pos: Vector4;
     readonly f: number;
     readonly orientation: Vector4[];
-    public center: Vector4;
+    private center: Vector4;
 
     constructor(pos: Vector4, orientation: Vector4[], focalLength: number) {
         this.pos = pos;
@@ -98,6 +102,24 @@ class Camera4 {
         removeComponent(this.orientation[i], this.orientation[0]);
         this.orientation[i].normalize();
         this.center = add(this.pos, multiplyScalar(this.orientation[0], this.f));
+    }
+
+    keyboardEventHandler(event: KeyboardEvent) {
+        const keyCode = event.which;
+        const keyMap = getKeyMap(keyCode);
+        if (keyMap === undefined) {
+            return;
+        }
+
+        if (event.ctrlKey) {
+            const s = 0.01;
+            const speed = keyMap.status === MotionStatus.POSITIVE ? s: -s;
+            this.tilt(keyMap.axis, speed);
+        } else {
+            const s = 0.02;
+            const speed = keyMap.status === MotionStatus.POSITIVE ? s: -s;
+            this.move(keyMap.axis, speed);
+        }
     }
 }
 
@@ -151,10 +173,156 @@ function renderVectorImage3(components: VectorImageComponent3[]): Scene {
 }
 
 
+enum MotionStatus {
+    STILL = 0,
+    NEGATIVE,
+    POSITIVE
+};
+
+
+function getKeyMap(keyCode: number) {
+    switch(keyCode) {
+        case 49: // 1
+            return { axis: 1, status: MotionStatus.NEGATIVE};
+        case 52: // 4
+            return { axis: 1, status: MotionStatus.POSITIVE}
+        case 50: // 2
+            return { axis: 3, status: MotionStatus.NEGATIVE};
+        case 53: // 5
+            return { axis: 3, status: MotionStatus.POSITIVE};
+        case 51: // 3
+            return { axis: 2, status: MotionStatus.NEGATIVE};
+        case 54: // 6
+            return { axis: 2, status: MotionStatus.POSITIVE}
+    }
+    return undefined;
+}
+
+class InteractiveImage3Frame {
+    size: number;
+
+    translationMotionStatus: MotionStatus[];
+    rotationMotionStatus: MotionStatus[];
+
+    constructor(size: number) {
+        this.size = size;
+        this.translationMotionStatus = new Array(4);
+        this.translationMotionStatus.fill(MotionStatus.STILL);
+        this.rotationMotionStatus = new Array(4);
+        this.rotationMotionStatus.fill(MotionStatus.STILL);
+    }
+
+
+
+    keyboardEventHandler(eventType: string, event: KeyboardEvent) {
+        const keyCode = event.which;
+        const keyMap = getKeyMap(keyCode);
+        if (keyMap === undefined) {
+            return;
+        }
+
+        if (eventType === 'keydown') {
+            if (event.ctrlKey) {
+                this.rotationMotionStatus[keyMap.axis] = keyMap.status;
+            } else {
+                this.translationMotionStatus[keyMap.axis] = keyMap.status;
+            }
+        }
+
+        if (eventType === 'keyup') {
+            this.translationMotionStatus[keyMap.axis] = MotionStatus.STILL;
+            this.rotationMotionStatus[keyMap.axis] = MotionStatus.STILL;
+        }
+    }
+
+    getMaterial(axis: number, sign: number) {
+        if (this.translationMotionStatus[0] === MotionStatus.POSITIVE) {
+            return getLineMaterial(0x4040ff);
+        } else if (this.translationMotionStatus[0] === MotionStatus.NEGATIVE) {
+            return getLineMaterial(0xff0000);
+        }
+
+        const colors = [0xffff00, 0x00ffff, 0xff8f00];
+        const bold = 0.008;
+        if (this.translationMotionStatus[axis] === MotionStatus.POSITIVE && sign > 0) {
+            return getLineMaterial(colors[axis-1], bold);
+        } else if (this.translationMotionStatus[axis] === MotionStatus.NEGATIVE && sign < 0) {
+            return getLineMaterial(colors[axis-1], bold);
+        }
+
+        if (this.rotationMotionStatus[axis] !== MotionStatus.STILL) {
+            if ((this.rotationMotionStatus[axis] === MotionStatus.POSITIVE) === (sign > 0)) {
+                return getLineMaterial(0x4040ff, bold);
+            } else {
+                return getLineMaterial(0xff0000, bold);
+            }
+        }
+
+        return getLineMaterial(colors[axis-1]);
+    }
+
+    renderToScene3(scene: Scene) {
+        let s = 0.98 * this.size;
+
+        for (let x of [-this.size, this.size]) {
+            const positions = [
+                x, -s, -s,
+                x, -s, s,
+                x, s, s,
+                x, s, -s,
+                x, -s, -s
+            ]
+            const material = this.getMaterial(1, x);
+            const geometry = new LineGeometry();
+            geometry.setPositions(positions);
+            const line = new Line2(geometry, material);
+            line.computeLineDistances();
+            line.scale.set(1, 1, 1);
+            scene.add(line);
+        }
+
+        for (let y of [-this.size, this.size]) {
+            const positions = [
+                -s, y, -s,
+                -s, y, s,
+                s, y, s,
+                s, y, -s,
+                -s, y, -s
+            ]
+            const material = this.getMaterial(2, y);
+            const geometry = new LineGeometry();
+            geometry.setPositions(positions);
+            const line = new Line2(geometry, material);
+            line.computeLineDistances();
+            line.scale.set(1, 1, 1);
+            scene.add(line);
+        }
+
+        for (let z of [-this.size, this.size]) {
+            const positions = [
+                -s, -s, z,
+                -s, s, z,
+                s, s, z,
+                s, -s, z,
+                -s, -s, z,
+            ]
+            const material = this.getMaterial(3, z);
+            const geometry = new LineGeometry();
+            geometry.setPositions(positions);
+            const line = new Line2(geometry, material);
+            line.computeLineDistances();
+            line.scale.set(1, 1, 1);
+            scene.add(line);
+        }
+    }
+}
+
+
 export {
     Object4,
     Camera4,
     Scene4,
     VectorImageComponent3,
-    renderVectorImage3
+    renderVectorImage3,
+    InteractiveImage3Frame
 }
