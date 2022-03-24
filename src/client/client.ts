@@ -1,7 +1,7 @@
 import * as THREE from 'three'
 import { LineBasicMaterial, Scene, Vector3, Vector4 } from 'three'
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls'
-import { Camera4, InteractiveImage3Frame, Object4, renderVectorImage3, Scene4, VectorImageComponent3 } from './math/core'
+import { Camera4, InteractiveImage3Frame, Object4, renderVectorImage3, Scene3WithMemoryTracker, Scene4, VectorImageComponent3 } from './math/core'
 import { Grid4, Tesseract, RED, GREEN, BLUE, YELLOW, WHITE } from './math/primitives'
 
 const tesseract = new Tesseract('tesseract').withMaterial(WHITE);
@@ -49,6 +49,8 @@ function onWindowResize() {
 
 const frame = new InteractiveImage3Frame(0.5);
 
+const scene = new Scene3WithMemoryTracker();
+
 window.addEventListener('keydown', (e) => {
     camera4.keyboardEventHandler(e);
 }, false);
@@ -76,7 +78,8 @@ function animate() {
 
 function render() {
     const image3 = scene4.render();
-    const scene = renderVectorImage3(image3);
+    scene.clearScene();
+    renderVectorImage3(scene, image3);
     frame.renderToScene3(scene);
     renderer.render(scene, camera)
 }

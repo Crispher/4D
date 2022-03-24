@@ -154,8 +154,39 @@ class Scene4 {
     }
 }
 
-function renderVectorImage3(components: VectorImageComponent3[]): Scene {
-    const scene = new Scene();
+
+class Scene3WithMemoryTracker extends Scene {
+    geometries: LineGeometry[] = [];
+    lines: Line2[] = [];
+
+    constructor() {
+        super();
+    }
+
+    addLineGeometry(geo: LineGeometry, material: Material) {
+        this.geometries.push(geo);
+        const line = new Line2(geo, material);
+        this.lines.push(line);
+        line.computeLineDistances();
+        line.scale.set(1, 1, 1);
+        this.add(line);
+    }
+
+    clearScene() {
+        this.clear();
+        for (let geo of this.geometries) {
+            geo.dispose();
+        }
+        this.geometries = [];
+        for (let line of this.lines) {
+            line.clear();
+        }
+        this.lines = [];
+    }
+}
+
+
+function renderVectorImage3(scene3: Scene3WithMemoryTracker, components: VectorImageComponent3[]): Scene {
     for (const component of components) {
         for (const edge of component.edges) {
             const p = [component.vertices[edge[0]], component.vertices[edge[1]]];
@@ -163,13 +194,10 @@ function renderVectorImage3(components: VectorImageComponent3[]): Scene {
             const positions = []
             positions.push(p[0].x, p[0].y, p[0].z, p[1].x, p[1].y, p[1].z)
             geometry.setPositions(positions);
-            const line = new Line2(geometry, component.material);
-            line.computeLineDistances();
-            line.scale.set(1, 1, 1);
-            scene.add(line);
+            scene3.addLineGeometry(geometry, component.material);
         }
     }
-    return scene;
+    return scene3;
 }
 
 
@@ -261,7 +289,7 @@ class InteractiveImage3Frame {
         return getLineMaterial(colors[axis-1]);
     }
 
-    renderToScene3(scene: Scene) {
+    renderToScene3(scene: Scene3WithMemoryTracker) {
         let s = 0.98 * this.size;
 
         for (let x of [-this.size, this.size]) {
@@ -275,10 +303,7 @@ class InteractiveImage3Frame {
             const material = this.getMaterial(1, x);
             const geometry = new LineGeometry();
             geometry.setPositions(positions);
-            const line = new Line2(geometry, material);
-            line.computeLineDistances();
-            line.scale.set(1, 1, 1);
-            scene.add(line);
+            scene.addLineGeometry(geometry, material);
         }
 
         for (let y of [-this.size, this.size]) {
@@ -292,10 +317,7 @@ class InteractiveImage3Frame {
             const material = this.getMaterial(2, y);
             const geometry = new LineGeometry();
             geometry.setPositions(positions);
-            const line = new Line2(geometry, material);
-            line.computeLineDistances();
-            line.scale.set(1, 1, 1);
-            scene.add(line);
+            scene.addLineGeometry(geometry, material);
         }
 
         for (let z of [-this.size, this.size]) {
@@ -309,19 +331,36 @@ class InteractiveImage3Frame {
             const material = this.getMaterial(3, z);
             const geometry = new LineGeometry();
             geometry.setPositions(positions);
-            const line = new Line2(geometry, material);
-            line.computeLineDistances();
-            line.scale.set(1, 1, 1);
-            scene.add(line);
+            scene.addLineGeometry(geometry, material);
         }
     }
 }
 
 
+function computeOcclusion(facet: Vector4[], lineSegment: Vector4[], viewpoint: Vector4) {
+
+}
+
+function getLineIntersection(a0: Vector4, a1: Vector4, b0: Vector4, b1: Vector4) {
+
+}
+
+function computeOcclusionOnNormalizedGeometry(lineSegment: Vector4[]) {
+    // assume the facet is the unit cube determined by e1, e2, e3;
+    // and the view point is at e4 (0, 0, 0, 1);
+    const a = lineSegment[0];
+    const b = lineSegment[1];
+    if (a.w >= 0 && b.w >= 0) {
+        return null;
+    }
+
+}
+
 export {
     Object4,
     Camera4,
     Scene4,
+    Scene3WithMemoryTracker,
     VectorImageComponent3,
     renderVectorImage3,
     InteractiveImage3Frame
