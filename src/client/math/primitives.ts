@@ -109,8 +109,7 @@ class ParallelepipedCell extends Object4 {
             bases[2].clone().add(bases[3]).sub(bases[0])
         )
         this.G0.push(
-            this.G0[4].clone().add(this.G0[5]).add(this.G0[6])
-                .addScaledVector(this.G0[0], -2)
+            this.G0[4].clone().add(bases[3]).sub(this.G0[0])
         );
         this.G3.push({
             vertices: [0, 1, 2, 3, 4, 5, 6, 7],

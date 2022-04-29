@@ -2,11 +2,13 @@ import {
     Vector3,
     Vector4,
     Scene,
-    Matrix4
+    Matrix4,
+    LineDashedMaterial
 } from 'three'
 import { LineMaterial } from 'three/examples/jsm/lines/LineMaterial';
 import { LineGeometry } from 'three/examples/jsm/lines/LineGeometry';
 import { Line2 } from 'three/examples/jsm/lines/Line2';
+import * as e from 'express';
 
 
 function add(a: Vector4, b: Vector4): Vector4 {
@@ -39,7 +41,8 @@ function getLineMaterial(color: number, width: number = 0.002, dashed: boolean =
 interface Edge {
     v_start: number,
     v_end: number,
-    occludedIntervals?: Float32Array[]
+    occludedIntervalSet?: Float32Array[],
+    occludedIntervals?: number[]
 }
 
 
@@ -55,7 +58,7 @@ class Object4 {
     readonly G2: Int32Array[];
     readonly G3: Facet[];
     material: Material = new LineMaterial({color: 0xffffff, linewidth:0.001});
-    occluded_material: Material | null = null;
+    occluded_material: Material = new LineMaterial({color: 0xffffff, linewidth:0.001, dashed: true, dashScale: 200});
 
     constructor(name: string, G0:Vector4[]=[], G1:Edge[]=[], G2:Int32Array[]=[], G3:Facet[]=[]) {
         this.name = name;
@@ -69,6 +72,7 @@ class Object4 {
         this.material = m;
         this.occluded_material = m.clone();
         this.occluded_material.dashed = true;
+        this.occluded_material.dashScale = 200;
         return this;
     }
 
@@ -284,14 +288,6 @@ class CameraQueue {
     }
 }
 
-
-interface VectorImageComponent3 {
-    vertices: Vector3[];
-    edges: Edge[];
-    material: Material;
-}
-
-
 class Scene4 {
     objects: Object4[];
 
@@ -302,18 +298,50 @@ class Scene4 {
     render(scene3: Scene3WithMemoryTracker, camera: CameraQueue | Camera4) {
         let current_cam: Camera4 = (camera instanceof Camera4) ? camera : camera.getPastCamera(0);
 
+        // render objects
+        this.clearOcclusion();
+        this.computeOcclusion(current_cam);
         for (const obj of this.objects) {
             let V = obj.G0.map(p => current_cam.project(p));
 
 
             for (const e of obj.G1) {
                 if (e.occludedIntervals) {
+                    e.occludedIntervals.push(1);
+                    let occluded = false;
+                    let start = 0;
+                    let s = V[e.v_start];
+                    let t = V[e.v_end];
+                    for (let switchPoint of e.occludedIntervals) {
+                        if (switchPoint - start > 1e-5) {
+                            let vi = s.clone();
+                            vi.lerp(t, start);
+                            let vj = s.clone();
+                            vj.lerp(t, switchPoint);
 
+                            if (occluded) {
+                                scene3.addLine(vi, vj, obj.occluded_material);
+                            } else {
+                                scene3.addLine(vi, vj, obj.material);
+                            }
+                        }
+
+                        start = switchPoint;
+                        occluded = !occluded;
+                    }
                 } else {
                     scene3.addLine(V[e.v_start], V[e.v_end], obj.material);
                 }
             }
+
+            for (const f of obj.G3) {
+                for (let e of f.edges) {
+                    scene3.addLine(V[e.v_start], V[e.v_end], obj.material);
+                }
+            }
         }
+
+        // render camera
         if (camera instanceof CameraQueue) {
             for (let i = 0; i < camera.totalFrames; i++) {
                 if (!camera.isActiveFrame(i)) {
@@ -341,10 +369,24 @@ class Scene4 {
     }
 
 
-    computeOcclusion() {
+    computeOcclusion(cam: Camera4) {
         for (const obj of this.objects) {
-            for (const facet of obj.G3) {
+            if (obj.G3.length === 0) {
+                for (let e of obj.G1) {
+                    e.occludedIntervalSet = [];
+                    for (const occluder of this.objects) {
+                        let I = occluder.computeOcclusion(cam.pos, obj.G0[e.v_start], obj.G0[e.v_end])
+                        e.occludedIntervalSet.push(...I);
+                    }
+                }
+            }
+        }
 
+        for (const obj of this.objects) {
+            for (const e of obj.G1) {
+                if (e.occludedIntervalSet) {
+                    e.occludedIntervals = getVisibleIntervals(e.occludedIntervalSet);
+                }
             }
         }
     }
@@ -367,6 +409,12 @@ class Scene4 {
 class Scene3WithMemoryTracker extends Scene {
     geometries: LineGeometry[] = [];
     lines: Line2[] = [];
+    debugMaterial = new LineMaterial({
+        dashed: true,
+        dashSize: 3,
+        linewidth: 0.002,
+        dashScale: 100
+    })
 
     constructor() {
         super();
@@ -375,6 +423,7 @@ class Scene3WithMemoryTracker extends Scene {
     addLineGeometry(geo: LineGeometry, material: Material) {
         this.geometries.push(geo);
         const line = new Line2(geo, material);
+        // const line = new Line2(geo, this.debugMaterial);
         this.lines.push(line);
         line.computeLineDistances();
         line.scale.set(1, 1, 1);
@@ -430,43 +479,51 @@ function getKeyMap(keyCode: number) {
 function computeOcclusion(f: Vector4[], lineSegment: Vector4[], viewpoint: Vector4) {
     // A * [f0, f1, f2, v] = [e0, e1, e2, e3];
     // A * [v1, v2]
+    // console.log("Before normalization", f, lineSegment, viewpoint)
+
+    let offset = f[0]
+
+    let f0 = sub(f[1], offset);
+    let f1 = sub(f[2], offset);
+    let f2 = sub(f[3], offset);
+    let view = sub(viewpoint, offset);
+
 
     const A_data: number[] = [];
-    A_data.push(...f[0].toArray());
-    A_data.push(...f[1].toArray());
-    A_data.push(...f[2].toArray());
-    A_data.push(...viewpoint.toArray());
+    A_data.push(...f0.toArray());
+    A_data.push(...f1.toArray());
+    A_data.push(...f2.toArray());
+    A_data.push(...view.toArray());
 
     const A = new Matrix4();
     if (A.determinant() === 0) {
         return null;
     }
     A.fromArray(A_data).invert();
+    // console.log("A=", A, new Vector4(0, 0, 0, 1).applyMatrix4(A));
     return computeOcclusionOnNormalizedGeometry([
-        lineSegment[0].clone().applyMatrix4(A),
-        lineSegment[1].clone().applyMatrix4(A)
+        sub(lineSegment[0], offset).applyMatrix4(A),
+        sub(lineSegment[1], offset).applyMatrix4(A)
     ])
 }
 
-function getVisibleIntervals(I: Float32Array[]) {
+function getVisibleIntervals(I: Float32Array[]): number[] {
     const eps = 1e-4;
     I.sort((a, b) => a[0] - b[0]);
     const J = [];
-    console.log(I);
     if (I.length > 0) {
         let i = 0;
         let j = i + 1;
         let min = I[i][0];
         let max = I[i][1];
         while (true) {
-            console.log(max, eps, j)
             if (j < I.length ) if (max + eps > I[j][0]) {
                 max = Math.max(max, I[j][1]);
                 j++;
                 continue;
             }
 
-            J.push(new Float32Array([min, max]));
+            J.push(min, max);
             if (j >= I.length) {
                 break;
             }
@@ -477,7 +534,7 @@ function getVisibleIntervals(I: Float32Array[]) {
 
         }
     }
-    console.log(J);
+    return J;
 }
 
 
@@ -512,6 +569,7 @@ function computeOcclusionOnNormalizedGeometry(lineSegment: Vector4[]) {
         return null;
     }
 
+    // console.log("normalized input", lineSegment)
     const project = (p: Vector4) => {
         const s=1 / (1-p.w);
         return new Vector4(p.x*s, p.y*s, p.z*s, 0);
@@ -560,8 +618,10 @@ function computeOcclusionOnNormalizedGeometry(lineSegment: Vector4[]) {
     }
 
     if (a.w < 0 && b.w >= 0) {
+
+
         const min = 0;
-        const max = a.w / (b.w - a.w);
+        const max = a.w / (a.w - b.w);
         const pa = project(a);
         const pb = project(b);
         const range = getCommonRange(pa, pb);
@@ -574,12 +634,15 @@ function computeOcclusionOnNormalizedGeometry(lineSegment: Vector4[]) {
         const e_w = new Vector4(0, 0, 0, 1);
         const lambda0 = getLineIntersection(e_w, pr0, a, b);
         const lambda1 = getLineIntersection(e_w, pr1, a, b);
+        // console.log("B", lineSegment, lambda0, lambda1, min, max);
         return [
             Math.max(min, lambda0),
             Math.min(max, lambda1)
         ];
     }
     if (a.w >= 0 && b.w < 0) {
+        // console.log("C");
+
         const min = a.w / (a.w - b.w);
         const max = 1;
         const pa = project(a);
@@ -600,6 +663,8 @@ function computeOcclusionOnNormalizedGeometry(lineSegment: Vector4[]) {
         ];
     }
     if (a.w < 0 && b.w < 0) {
+        // console.log("D");
+
         const min = 0;
         const max = 1;
         const pa = project(a);
@@ -611,12 +676,10 @@ function computeOcclusionOnNormalizedGeometry(lineSegment: Vector4[]) {
         }
         const pr0 = pa.clone().lerp(pb, range[0]);
         const pr1 = pa.clone().lerp(pb, range[1]);
-        console.log(range, pa, pb, pr0, pr1)
 
         const e_w = new Vector4(0, 0, 0, 1);
         const lambda0 = getLineIntersection(e_w, pr0, a, b);
         const lambda1 = getLineIntersection(e_w, pr1, a, b);
-        console.log(lambda0, lambda1, a, b)
         return [
             Math.max(min, lambda0),
             Math.min(max, lambda1)

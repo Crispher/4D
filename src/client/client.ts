@@ -2,10 +2,15 @@ import * as THREE from 'three'
 import { LineBasicMaterial, Plane, Scene, Vector3, Vector4 } from 'three'
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls'
 import { Camera4, CameraQueue,  Object4, Scene3WithMemoryTracker, Scene4 } from './math/core'
-import { Grid4, Tesseract, RED, GREEN, BLUE, YELLOW, WHITE } from './math/primitives'
+import { Grid4, Tesseract, RED, GREEN, BLUE, YELLOW, WHITE, ParallelepipedCell } from './math/primitives'
 import { test } from './test'
 
-const tesseract = new Tesseract('tesseract').withMaterial(WHITE);
+// const tesseract = new Tesseract('tesseract').withMaterial(WHITE);
+const facet = new ParallelepipedCell('facet-0',
+    [[0, -1, -1, -1], [0, 1, -1, -1], [0, -1, -1, 1], [0, -1, 1, -1]].map((e: number[]) => {
+        return new Vector4().fromArray(e);
+    })
+)
 
 const grid = new Grid4('tess', [1.1, 1.1, 1.1, 0.1]);
 const camera4 = new Camera4(
@@ -16,12 +21,12 @@ const camera4 = new Camera4(
     1
 );
 
-camera4.move(1, 0.01);
 
 let camQueue = new CameraQueue(150, camera4, 10);
 
 const scene4 = new Scene4([
-    tesseract,
+    // tesseract,
+    facet,
     grid.getX().withMaterial(RED),
     grid.getY().withMaterial(GREEN),
     grid.getZ().withMaterial(BLUE),
@@ -29,6 +34,10 @@ const scene4 = new Scene4([
 ])
 
 
+let I = facet.computeOcclusion(camera4.pos,
+    new Vector4(1, 0, 0, 0),
+    new Vector4(-1, 0, 0, 0));
+console.log('I = ', I)
 
 const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000)
 camera.position.z = 2
@@ -54,19 +63,11 @@ function onWindowResize() {
     render()
 }
 
-// const frame = new InteractiveImage3Frame(0.5);
-
 const scene = new Scene3WithMemoryTracker();
 
 window.addEventListener('keydown', (e) => {
     camera4.keyboardEventHandler(e);
 }, false);
-// window.addEventListener('keydown', (e) => {
-//     frame.keyboardEventHandler('keydown', e);
-// }, false);
-// window.addEventListener('keyup', (e) => {
-//     frame.keyboardEventHandler('keyup', e);
-// }, false);
 
 
 function animate() {
@@ -94,4 +95,4 @@ function render() {
 
 }
 animate()
-test()
+// test()
