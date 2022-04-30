@@ -2,17 +2,20 @@ import * as THREE from 'three'
 import { LineBasicMaterial, Plane, Scene, Vector3, Vector4 } from 'three'
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls'
 import { Camera4, CameraQueue,  Object4, Scene3WithMemoryTracker, Scene4 } from './math/core'
-import { Grid4, Tesseract, RED, GREEN, BLUE, YELLOW, WHITE, ParallelepipedCell } from './math/primitives'
+import { Grid4, Tesseract, RED, GREEN, BLUE, YELLOW, WHITE, ParallelepipedCell, LineObject } from './math/primitives'
 import { test } from './test'
 
 // const tesseract = new Tesseract('tesseract').withMaterial(WHITE);
 const facet = new ParallelepipedCell('facet-0',
-    [[0, -1, -1, -1], [0, 1, -1, -1], [0, -1, -1, 1], [0, -1, 1, -1]].map((e: number[]) => {
+    [[0, 0, 0, 0], [0, 1, 0, 0], [0, 0, 0, 1], [0, 0, 1, 0]].map((e: number[]) => {
         return new Vector4().fromArray(e);
     })
 )
 
 const grid = new Grid4('tess', [1.1, 1.1, 1.1, 0.1]);
+const line = new LineObject('line',
+    new Vector4(1, 1.1, 1, 0),
+    new Vector4(1, -1.1, 1, 0));
 const camera4 = new Camera4(
     new Vector4(-5, 0, 0, 0),
     [[1, 0, 0, 0], [0, 1, 0, 0], [0, 0, 0, 1], [0, 0, 1, 0]].map((e: number[]) => {
@@ -31,13 +34,18 @@ const scene4 = new Scene4([
     grid.getY().withMaterial(GREEN),
     grid.getZ().withMaterial(BLUE),
     grid.getW().withMaterial(YELLOW)
+    // line
 ])
 
+let Y = grid.getY();
 
 let I = facet.computeOcclusion(camera4.pos,
-    new Vector4(1, 0, 0, 0),
-    new Vector4(-1, 0, 0, 0));
-console.log('I = ', I)
+    new Vector4(1, -1.1, 1, 0),
+    new Vector4(1, 1.1, 1, 0));
+
+// let I1 = facet.computeOcclusion(camera4.pos,
+//     Y.G0[16], Y.G0[17]);
+console.log('I0 = ', I, Y.G0[16], Y.G0[17])
 
 const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000)
 camera.position.z = 2
@@ -65,8 +73,11 @@ function onWindowResize() {
 
 const scene = new Scene3WithMemoryTracker();
 
+var sceneUpdated = true;
+
 window.addEventListener('keydown', (e) => {
     camera4.keyboardEventHandler(e);
+    sceneUpdated = true;
 }, false);
 
 
@@ -85,14 +96,18 @@ function animate() {
 }
 
 function render() {
-    scene.clearScene();
-    // camera4.tilt(1, 0.005);
-    // camera4.move(0, -0.005)
-    camQueue.pushCamera(camera4);
-    scene4.render(scene, camQueue);
-    // frame.renderToScene3(scene);
-    renderer.render(scene, camera);
-
+    if (sceneUpdated) {
+        scene.clearScene();
+        // camera4.tilt(1, 0.005);
+        // camera4.move(0, -0.005)
+        camQueue.pushCamera(camera4);
+        scene4.render(scene, camQueue);
+        // frame.renderToScene3(scene);
+        renderer.render(scene, camera);
+        sceneUpdated = false;
+    } else {
+        renderer.render(scene, camera);
+    }
 }
 animate()
 // test()

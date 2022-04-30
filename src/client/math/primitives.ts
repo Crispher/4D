@@ -99,6 +99,14 @@ class Tesseract extends Object4 {
 }
 
 
+class LineObject extends Object4 {
+    constructor(name: string, s: Vector4, t: Vector4) {
+        super(name);
+        this.G0.push(s, t);
+        this.G1.push({v_start: 0, v_end: 1});
+    }
+}
+
 class ParallelepipedCell extends Object4 {
     constructor(name: string, bases: Vector4[]) {
         super(name);
@@ -150,6 +158,7 @@ const YELLOW = getLineMaterial(0xffff00);
 export {
     Grid4,
     Tesseract,
+    LineObject,
     ParallelepipedCell,
     WHITE,
     RED,

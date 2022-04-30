@@ -69,7 +69,7 @@ class Object4 {
     }
 
     withMaterial(m: Material) {
-        this.material = m;
+        this.material = m.clone();
         this.occluded_material = m.clone();
         this.occluded_material.dashed = true;
         this.occluded_material.dashScale = 200;
@@ -308,10 +308,13 @@ class Scene4 {
             for (const e of obj.G1) {
                 if (e.occludedIntervals) {
                     e.occludedIntervals.push(1);
+
+                    (e.occludedIntervals)
                     let occluded = false;
                     let start = 0;
                     let s = V[e.v_start];
                     let t = V[e.v_end];
+                    // console.log(e, obj.G0[e.v_start], obj.G0[e.v_end]);
                     for (let switchPoint of e.occludedIntervals) {
                         if (switchPoint - start > 1e-5) {
                             let vi = s.clone();
@@ -575,14 +578,17 @@ function computeOcclusionOnNormalizedGeometry(lineSegment: Vector4[]) {
         return new Vector4(p.x*s, p.y*s, p.z*s, 0);
     }
 
+    // get the {x} s.t. lerp(a, b, x) is in [0, 1]
     const getRange = (a: number, b: number) => {
+        // console.log('R', a, b);
+
         if (a < 0) {
             if (b <= 0) {
                 return null;
             } else if (b <= 1) { // 0 < b
-                return [a/(b-a), 1];
+                return [a/(a-b), 1];
             } else { // 1 < b
-                return [a/(b-a), (1-a)/(b-a)];
+                return [a/(a-b), (1-a)/(b-a)];
             }
         } else if (a <= 1) { // 0 <= a
             if (b < 0) {
@@ -607,6 +613,8 @@ function computeOcclusionOnNormalizedGeometry(lineSegment: Vector4[]) {
         const rx = getRange(a.x, b.x);
         const ry = getRange(a.y, b.y);
         const rz = getRange(a.z, b.z);
+        // console.log(rx, ry, rz);
+
         if (rx === null || ry === null || rz === null) {
             return null;
         } else {
@@ -663,7 +671,7 @@ function computeOcclusionOnNormalizedGeometry(lineSegment: Vector4[]) {
         ];
     }
     if (a.w < 0 && b.w < 0) {
-        // console.log("D");
+
 
         const min = 0;
         const max = 1;
@@ -680,6 +688,7 @@ function computeOcclusionOnNormalizedGeometry(lineSegment: Vector4[]) {
         const e_w = new Vector4(0, 0, 0, 1);
         const lambda0 = getLineIntersection(e_w, pr0, a, b);
         const lambda1 = getLineIntersection(e_w, pr1, a, b);
+        // console.log("D", lambda0, lambda1, pa, pb, range);
         return [
             Math.max(min, lambda0),
             Math.min(max, lambda1)
