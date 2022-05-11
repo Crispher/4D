@@ -2,10 +2,11 @@ import * as THREE from 'three'
 import { LineBasicMaterial, Plane, Scene, Vector3, Vector4 } from 'three'
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls'
 import { Camera4, CameraQueue,  Object4, Scene3WithMemoryTracker, Scene4 } from './math/core'
-import { Grid4, Tesseract, RED, GREEN, BLUE, YELLOW, WHITE, ParallelepipedCell, LineObject } from './math/primitives'
+import { Grid4, Tesseract, RED, GREEN, BLUE, YELLOW, WHITE, ParallelepipedCell, LineObject, TessearctFaces } from './math/primitives'
 import { test } from './test'
 
 // const tesseract = new Tesseract('tesseract').withMaterial(WHITE);
+const tesseract = new TessearctFaces('tesseract');
 const facet = new ParallelepipedCell('facet-0',
     [[0, 0, 0, 0], [0, 1, 0, 0], [0, 0, 0, 1], [0, 0, 1, 0]].map((e: number[]) => {
         return new Vector4().fromArray(e);
@@ -28,12 +29,12 @@ const camera4 = new Camera4(
 let camQueue = new CameraQueue(150, camera4, 10);
 
 const scene4 = new Scene4([
-    // tesseract,
-    facet,
-    grid.getX().withMaterial(RED),
-    grid.getY().withMaterial(GREEN),
-    grid.getZ().withMaterial(BLUE),
-    grid.getW().withMaterial(YELLOW)
+    tesseract,
+    // facet,
+    // grid.getX().withMaterial(RED),
+    // grid.getY().withMaterial(GREEN),
+    // grid.getZ().withMaterial(BLUE),
+    // grid.getW().withMaterial(YELLOW)
     // line
 ])
 

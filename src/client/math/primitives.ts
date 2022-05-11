@@ -99,6 +99,107 @@ class Tesseract extends Object4 {
 }
 
 
+class TessearctFaces extends Object4 {
+    constructor(name: string) {
+        super(name);
+        for (let i of [0, 1]) {
+            for (let j of [0, 1]) {
+                for (let k of [0, 1]) {
+                    for (let l of [0, 1]) {
+                        this.G0.push(new Vector4(i, j, k, l));
+                    }
+                }
+            }
+        }
+
+        this.G1.push(
+            {v_start: 0b0000, v_end: 0b0001},
+            {v_start: 0b0010, v_end: 0b0011},
+            {v_start: 0b0100, v_end: 0b0101},
+            {v_start: 0b0110, v_end: 0b0111},
+            {v_start: 0b1000, v_end: 0b1001},
+            {v_start: 0b1010, v_end: 0b1011},
+            {v_start: 0b1100, v_end: 0b1101},
+            {v_start: 0b1110, v_end: 0b1111},
+
+            {v_start: 0b0000, v_end: 0b0010}, // 8
+            {v_start: 0b0001, v_end: 0b0011},
+            {v_start: 0b0100, v_end: 0b0110},
+            {v_start: 0b0101, v_end: 0b0111},
+            {v_start: 0b1000, v_end: 0b1010},
+            {v_start: 0b1001, v_end: 0b1011},
+            {v_start: 0b1100, v_end: 0b1110},
+            {v_start: 0b1101, v_end: 0b1111},
+
+            {v_start: 0b0000, v_end: 0b0100}, // 16
+            {v_start: 0b0001, v_end: 0b0101},
+            {v_start: 0b0010, v_end: 0b0110},
+            {v_start: 0b0011, v_end: 0b0111},
+            {v_start: 0b1000, v_end: 0b1100}, // 20
+            {v_start: 0b1001, v_end: 0b1101},
+            {v_start: 0b1010, v_end: 0b1110},
+            {v_start: 0b1011, v_end: 0b1111},
+
+            {v_start: 0b0000, v_end: 0b1000}, // 24
+            {v_start: 0b0001, v_end: 0b1001},
+            {v_start: 0b0010, v_end: 0b1010},
+            {v_start: 0b0011, v_end: 0b1011},
+            {v_start: 0b0100, v_end: 0b1100}, // 28
+            {v_start: 0b0101, v_end: 0b1101},
+            {v_start: 0b0110, v_end: 0b1110},
+            {v_start: 0b0111, v_end: 0b1111},
+        )
+
+        let X0 = [0, 1, 2, 4, 3, 5, 6, 7];
+        let X1 = [8, 9, 10, 12, 0b1011, 0b1101, 0b1110, 0b1111];
+
+        let Y0 = [0b0000, 0b0001, 0b0010, 0b1000, 0b0011, 0b1001, 0b1010, 0b1011];
+        let Y1 = [0b0100, 0b0101, 0b0110, 0b1100, 0b0111, 0b1101, 0b1110, 0b1111];
+
+        let Z0 = [0b0000, 0b0001, 0b0100, 0b1000, 0b0101, 0b1001, 0b1100, 0b1101];
+        let Z1 = [0b0010, 0b0011, 0b0110, 0b1010, 0b0111, 0b1011, 0b1110, 0b1111];
+
+        let W0 = [0b0000, 0b0010, 0b0100, 0b1000, 0b0110, 0b1010, 0b1100, 0b1110];
+        let W1 = [0b0001, 0b0011, 0b0101, 0b1001, 0b0111, 0b1011, 0b1101, 0b1111];
+
+        let facets = [X0, X1, Y0, Y1, Z0, Z1, W0, W1].map(v => {
+            return {vertices: v, edges: this.getFaceEdges(v)}
+        })
+        this.G3.push(...facets);
+    }
+
+    private getFaceEdges(v: number[]) {
+        return [
+            {v_start: 0, v_end: 1}, //0
+            {v_start: 0, v_end: 2},
+            {v_start: 0, v_end: 3},
+            {v_start: 1, v_end: 4},
+            {v_start: 1, v_end: 5},
+            {v_start: 2, v_end: 4},
+            {v_start: 2, v_end: 6},
+            {v_start: 3, v_end: 5},
+            {v_start: 3, v_end: 6},
+            {v_start: 4, v_end: 7},
+            {v_start: 5, v_end: 7},
+            {v_start: 6, v_end: 7},
+        ].map(e => {
+            return this.findEdge(v[e.v_start], v[e.v_end])
+        });
+    }
+
+    private findEdge(v_start: number, v_end: number) {
+        for (let i = 0; i < this.G1.length; i++)  {
+            let e = this.G1[i];
+            if (e.v_start === v_start && e.v_end === v_end) {
+                return i;
+            }
+        }
+        console.error("cannot find edge!")
+        return -1;
+    }
+}
+
+
 class LineObject extends Object4 {
     constructor(name: string, s: Vector4, t: Vector4) {
         super(name);
@@ -119,22 +220,23 @@ class ParallelepipedCell extends Object4 {
         this.G0.push(
             this.G0[4].clone().add(bases[3]).sub(this.G0[0])
         );
+        this.G1.push(
+            {v_start: 0, v_end: 1}, //0
+            {v_start: 0, v_end: 2},
+            {v_start: 0, v_end: 3},
+            {v_start: 1, v_end: 4},
+            {v_start: 1, v_end: 5},
+            {v_start: 2, v_end: 4},
+            {v_start: 2, v_end: 6},
+            {v_start: 3, v_end: 5},
+            {v_start: 3, v_end: 6},
+            {v_start: 4, v_end: 7},
+            {v_start: 5, v_end: 7},
+            {v_start: 6, v_end: 7},
+        )
         this.G3.push({
             vertices: [0, 1, 2, 3, 4, 5, 6, 7],
-            edges: [
-                {v_start: 0, v_end: 1}, //0
-                {v_start: 0, v_end: 2},
-                {v_start: 0, v_end: 3},
-                {v_start: 1, v_end: 4},
-                {v_start: 1, v_end: 5},
-                {v_start: 2, v_end: 4},
-                {v_start: 2, v_end: 6},
-                {v_start: 3, v_end: 5},
-                {v_start: 3, v_end: 6},
-                {v_start: 4, v_end: 7},
-                {v_start: 5, v_end: 7},
-                {v_start: 6, v_end: 7},
-            ]
+            edges: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]
         });
     }
 }
@@ -158,6 +260,7 @@ const YELLOW = getLineMaterial(0xffff00);
 export {
     Grid4,
     Tesseract,
+    TessearctFaces,
     LineObject,
     ParallelepipedCell,
     WHITE,

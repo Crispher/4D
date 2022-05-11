@@ -48,7 +48,7 @@ interface Edge {
 
 interface Facet {
     vertices: number[] // of length 8
-    edges: Edge[] // of length 12
+    edges: number[] // of length 12
 }
 
 class Object4 {
@@ -337,11 +337,12 @@ class Scene4 {
                 }
             }
 
-            for (const f of obj.G3) {
-                for (let e of f.edges) {
-                    scene3.addLine(V[e.v_start], V[e.v_end], obj.material);
-                }
-            }
+            // for (const f of obj.G3) {
+            //     for (let ei of f.edges) {
+            //         let e = obj.G1[ei]
+            //         scene3.addLine(V[e.v_start], V[e.v_end], obj.material);
+            //     }
+            // }
         }
 
         // render camera
@@ -374,7 +375,7 @@ class Scene4 {
 
     computeOcclusion(cam: Camera4) {
         for (const obj of this.objects) {
-            if (obj.G3.length === 0) {
+            // if (obj.G3.length === 0) {
                 for (let e of obj.G1) {
                     e.occludedIntervalSet = [];
                     for (const occluder of this.objects) {
@@ -382,7 +383,7 @@ class Scene4 {
                         e.occludedIntervalSet.push(...I);
                     }
                 }
-            }
+            // }
         }
 
         for (const obj of this.objects) {
@@ -398,11 +399,6 @@ class Scene4 {
         for (const obj of this.objects) {
             for (const e of obj.G1) {
                 e.occludedIntervals = undefined;
-            }
-            for (const f of obj.G3) {
-                for (const e of f.edges) {
-                    e.occludedIntervals = undefined;
-                }
             }
         }
     }
