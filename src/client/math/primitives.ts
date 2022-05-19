@@ -1,6 +1,6 @@
-import { Vector4, LineBasicMaterial } from "three";
+import { Vector4 } from "three";
 import { LineMaterial } from 'three/examples/jsm/lines/LineMaterial'
-import { Object4 } from "./core";
+import { Object4, getLineMaterial } from "./core";
 
 
 class Grid4 extends Object4 {
@@ -163,39 +163,9 @@ class TessearctFaces extends Object4 {
         let W1 = [0b0001, 0b0011, 0b0101, 0b1001, 0b0111, 0b1011, 0b1101, 0b1111];
 
         let facets = [X0, X1, Y0, Y1, Z0, Z1, W0, W1].map(v => {
-            return {vertices: v, edges: this.getFaceEdges(v)}
+            return {vertices: v}
         })
         this.G3.push(...facets);
-    }
-
-    private getFaceEdges(v: number[]) {
-        return [
-            {v_start: 0, v_end: 1}, //0
-            {v_start: 0, v_end: 2},
-            {v_start: 0, v_end: 3},
-            {v_start: 1, v_end: 4},
-            {v_start: 1, v_end: 5},
-            {v_start: 2, v_end: 4},
-            {v_start: 2, v_end: 6},
-            {v_start: 3, v_end: 5},
-            {v_start: 3, v_end: 6},
-            {v_start: 4, v_end: 7},
-            {v_start: 5, v_end: 7},
-            {v_start: 6, v_end: 7},
-        ].map(e => {
-            return this.findEdge(v[e.v_start], v[e.v_end])
-        });
-    }
-
-    private findEdge(v_start: number, v_end: number) {
-        for (let i = 0; i < this.G1.length; i++)  {
-            let e = this.G1[i];
-            if (e.v_start === v_start && e.v_end === v_end) {
-                return i;
-            }
-        }
-        console.error("cannot find edge!")
-        return -1;
     }
 }
 
@@ -236,19 +206,10 @@ class ParallelepipedCell extends Object4 {
         )
         this.G3.push({
             vertices: [0, 1, 2, 3, 4, 5, 6, 7],
-            edges: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]
         });
     }
 }
 
-
-function getLineMaterial(color: number, width: number = 0.002, dashed: boolean = false) {
-    return new LineMaterial({
-        color: color,
-        linewidth: width,
-        dashed: dashed
-    })
-}
 
 
 const WHITE = getLineMaterial(0xffffff);

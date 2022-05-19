@@ -2,13 +2,11 @@ import {
     Vector3,
     Vector4,
     Scene,
-    Matrix4,
-    LineDashedMaterial
+    Matrix4
 } from 'three'
 import { LineMaterial } from 'three/examples/jsm/lines/LineMaterial';
 import { LineGeometry } from 'three/examples/jsm/lines/LineGeometry';
 import { Line2 } from 'three/examples/jsm/lines/Line2';
-import * as e from 'express';
 
 
 function add(a: Vector4, b: Vector4): Vector4 {
@@ -28,27 +26,50 @@ function removeComponent(a: Vector4, b: Vector4) {
     a.addScaledVector(b, -a.dot(b));
 }
 
+function average(vec_array: Vector4[]) {
+    let ret = new Vector4(0, 0, 0, 0);
+    for (let vec of vec_array) {
+        ret.add(vec);
+    }
+    ret.multiplyScalar(1.0/vec_array.length);
+    return ret;
+}
+
 type Material = LineMaterial;
 
 function getLineMaterial(color: number, width: number = 0.002, dashed: boolean = false) {
-    return new LineMaterial({
-        color: color,
-        linewidth: width,
-        dashed: dashed
-    })
+    return new MaterialSet(
+        new LineMaterial({color: color, linewidth: width}),
+        new LineMaterial({color: color, linewidth: width, dashed: true, dashScale: 200})
+    );
 }
+
+class MaterialSet {
+    visible: Material | undefined;
+    occluded: Material | undefined;
+
+    constructor(visible?: Material, occluded?: Material) {
+        this.visible = visible;
+        this.occluded = occluded;
+    }
+}
+
+const getDefaultMaterialSet = () => new MaterialSet(
+    new LineMaterial({color: 0xffffff, linewidth:0.001}),
+    new LineMaterial({color: 0xffffff, linewidth:0.001, dashed: true, dashScale: 200})
+);
 
 interface Edge {
     v_start: number,
     v_end: number,
     occludedIntervalSet?: Float32Array[],
-    occludedIntervals?: number[]
+    occludedIntervals?: number[],
+    materialSet?: MaterialSet
 }
 
 
 interface Facet {
     vertices: number[] // of length 8
-    edges: number[] // of length 12
 }
 
 class Object4 {
@@ -57,8 +78,8 @@ class Object4 {
     readonly G1: Edge[];
     readonly G2: Int32Array[];
     readonly G3: Facet[];
-    material: Material = new LineMaterial({color: 0xffffff, linewidth:0.001});
-    occluded_material: Material = new LineMaterial({color: 0xffffff, linewidth:0.001, dashed: true, dashScale: 200});
+
+    materialSet: MaterialSet;
 
     constructor(name: string, G0:Vector4[]=[], G1:Edge[]=[], G2:Int32Array[]=[], G3:Facet[]=[]) {
         this.name = name;
@@ -66,20 +87,18 @@ class Object4 {
         this.G1 = G1;
         this.G2 = G2;
         this.G3 = G3;
+        this.materialSet = getDefaultMaterialSet();
     }
 
-    withMaterial(m: Material) {
-        this.material = m.clone();
-        this.occluded_material = m.clone();
-        this.occluded_material.dashed = true;
-        this.occluded_material.dashScale = 200;
+    withMaterial(m: MaterialSet) {
+        this.materialSet = m;
         return this;
     }
 
     withAlpha(a: number) {
-        if (this.material) {
-            this.material.transparent = true;
-            this.material.opacity = a;
+        if (this.materialSet.visible) {
+            this.materialSet.visible.transparent = true;
+            this.materialSet.visible.opacity = a;
         }
         return this;
     }
@@ -108,8 +127,33 @@ class Object4 {
         return ret;
     }
 
-    computeSelfOcclusion(viewPoint: Vector4) {
+    generateFacetBorder(facet: number, negativeMargin: number, materialSet?: MaterialSet) {
+        let f_vertices = this.G3[facet].vertices.map(v => this.G0[v]);
+        let f_center = average(f_vertices);
+        let f_new = f_vertices.map(
+            v => v.clone().lerp(f_center, negativeMargin)
+        );
 
+        let s = this.G0.length;
+        let e = this.G1.length;
+        this.G0.push(...f_new);
+        this.G1.push(
+            {v_start: s+0, v_end: s+1, materialSet}, //0
+            {v_start: s+0, v_end: s+2, materialSet},
+            {v_start: s+0, v_end: s+3, materialSet},
+            {v_start: s+1, v_end: s+4, materialSet},
+            {v_start: s+1, v_end: s+5, materialSet},
+            {v_start: s+2, v_end: s+4, materialSet},
+            {v_start: s+2, v_end: s+6, materialSet},
+            {v_start: s+3, v_end: s+5, materialSet},
+            {v_start: s+3, v_end: s+6, materialSet},
+            {v_start: s+4, v_end: s+7, materialSet},
+            {v_start: s+5, v_end: s+7, materialSet},
+            {v_start: s+6, v_end: s+7, materialSet},
+        );
+        this.G3.push({
+            vertices: [s, s+1, s+2, s+3, s+4, s+5, s+6, s+7]
+        });
     }
 }
 
@@ -304,12 +348,16 @@ class Scene4 {
         for (const obj of this.objects) {
             let V = obj.G0.map(p => current_cam.project(p));
 
-
             for (const e of obj.G1) {
+                let localMaterial;
+                if (e.materialSet) {
+                    localMaterial = e.materialSet;
+                } else {
+                    localMaterial = obj.materialSet;
+                }
+
                 if (e.occludedIntervals) {
                     e.occludedIntervals.push(1);
-
-                    (e.occludedIntervals)
                     let occluded = false;
                     let start = 0;
                     let s = V[e.v_start];
@@ -323,9 +371,9 @@ class Scene4 {
                             vj.lerp(t, switchPoint);
 
                             if (occluded) {
-                                scene3.addLine(vi, vj, obj.occluded_material);
+                                scene3.addLine(vi, vj, localMaterial.occluded);
                             } else {
-                                scene3.addLine(vi, vj, obj.material);
+                                scene3.addLine(vi, vj, localMaterial.visible);
                             }
                         }
 
@@ -333,16 +381,9 @@ class Scene4 {
                         occluded = !occluded;
                     }
                 } else {
-                    scene3.addLine(V[e.v_start], V[e.v_end], obj.material);
+                    scene3.addLine(V[e.v_start], V[e.v_end], localMaterial.visible);
                 }
             }
-
-            // for (const f of obj.G3) {
-            //     for (let ei of f.edges) {
-            //         let e = obj.G1[ei]
-            //         scene3.addLine(V[e.v_start], V[e.v_end], obj.material);
-            //     }
-            // }
         }
 
         // render camera
@@ -357,7 +398,7 @@ class Scene4 {
                 for (const obj of cam_i.getFrame(0.5, alpha/(i*beta+alpha))) {
                     let V = obj.G0.map(p => current_cam.project(p));
                     for (const e of obj.G1) {
-                        scene3.addLine(V[e.v_start], V[e.v_end], obj.material);
+                        scene3.addLine(V[e.v_start], V[e.v_end], obj.materialSet.visible);
                     }
                 }
             }
@@ -366,7 +407,7 @@ class Scene4 {
             for (const obj of current_cam.getFrame(0.5, 0.5)) {
                 let V = obj.G0.map(p => current_cam.project(p));
                 for (const e of obj.G1) {
-                    scene3.addLine(V[e.v_start], V[e.v_end], obj.material);
+                    scene3.addLine(V[e.v_start], V[e.v_end], obj.materialSet.visible);
                 }
             }
         }
@@ -375,15 +416,13 @@ class Scene4 {
 
     computeOcclusion(cam: Camera4) {
         for (const obj of this.objects) {
-            // if (obj.G3.length === 0) {
-                for (let e of obj.G1) {
-                    e.occludedIntervalSet = [];
-                    for (const occluder of this.objects) {
-                        let I = occluder.computeOcclusion(cam.pos, obj.G0[e.v_start], obj.G0[e.v_end])
-                        e.occludedIntervalSet.push(...I);
-                    }
+            for (let e of obj.G1) {
+                e.occludedIntervalSet = [];
+                for (const occluder of this.objects) {
+                    let I = occluder.computeOcclusion(cam.pos, obj.G0[e.v_start], obj.G0[e.v_end])
+                    e.occludedIntervalSet.push(...I);
                 }
-            // }
+            }
         }
 
         for (const obj of this.objects) {
@@ -429,10 +468,12 @@ class Scene3WithMemoryTracker extends Scene {
         this.add(line);
     }
 
-    addLine(a: Vector3, b: Vector3, material: Material) {
-        const geo = new LineGeometry();
-        geo.setPositions([a.x, a.y, a.z, b.x, b.y, b.z]);
-        this.addLineGeometry(geo, material);
+    addLine(a: Vector3, b: Vector3, material: Material | undefined) {
+        if (material) {
+            const geo = new LineGeometry();
+            geo.setPositions([a.x, a.y, a.z, b.x, b.y, b.z]);
+            this.addLineGeometry(geo, material);
+        }
     }
 
     clearScene() {
@@ -622,8 +663,6 @@ function computeOcclusionOnNormalizedGeometry(lineSegment: Vector4[]) {
     }
 
     if (a.w < 0 && b.w >= 0) {
-
-
         const min = 0;
         const max = a.w / (a.w - b.w);
         const pa = project(a);
@@ -667,8 +706,6 @@ function computeOcclusionOnNormalizedGeometry(lineSegment: Vector4[]) {
         ];
     }
     if (a.w < 0 && b.w < 0) {
-
-
         const min = 0;
         const max = 1;
         const pa = project(a);
@@ -698,6 +735,7 @@ export {
     CameraQueue,
     Scene4,
     Scene3WithMemoryTracker,
+    getLineMaterial,
     getLineIntersection,
     computeOcclusionOnNormalizedGeometry,
     computeOcclusion,

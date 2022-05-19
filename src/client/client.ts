@@ -28,15 +28,18 @@ const camera4 = new Camera4(
 
 let camQueue = new CameraQueue(150, camera4, 10);
 
+tesseract.generateFacetBorder(2, 0.05, YELLOW);
+
 const scene4 = new Scene4([
     tesseract,
     // facet,
-    // grid.getX().withMaterial(RED),
-    // grid.getY().withMaterial(GREEN),
-    // grid.getZ().withMaterial(BLUE),
-    // grid.getW().withMaterial(YELLOW)
+    grid.getX().withMaterial(RED),
+    grid.getY().withMaterial(GREEN),
+    grid.getZ().withMaterial(BLUE),
+    grid.getW().withMaterial(YELLOW)
     // line
 ])
+
 
 let Y = grid.getY();
 
@@ -54,7 +57,7 @@ camera.position.z = 2
 
 const renderer = new THREE.WebGLRenderer({antialias: true})
 renderer.setSize(window.innerWidth, window.innerHeight)
-renderer.setClearColor(0xff99c7)
+// renderer.setClearColor(0xff99c7)
 renderer.clippingPlanes = [
     new Plane(new Vector3(0, 0, 1), 0.8)
 ]
