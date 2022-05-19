@@ -1,6 +1,6 @@
 import { Vector4 } from "three";
 import { LineMaterial } from 'three/examples/jsm/lines/LineMaterial'
-import { Object4, getLineMaterial } from "./core";
+import { Object4, getLineMaterial, MaterialSet } from "./core";
 
 
 class Grid4 extends Object4 {
@@ -10,7 +10,7 @@ class Grid4 extends Object4 {
         this.dims = dims;
     }
 
-    getX(): Object4 {
+    getX(material: MaterialSet): Object4 {
         let ret = new Object4(`${this.name}-X-axis`);
         const dims = this.dims;
         for (let i = Math.ceil(-dims[1]); i <= Math.floor(dims[1]); i++) {
@@ -18,7 +18,8 @@ class Grid4 extends Object4 {
                 for (let k = Math.ceil(-dims[3]); k <= Math.floor(dims[3]); k++) {
                     ret.addNewLine(
                         new Vector4(-dims[0], i, j, k),
-                        new Vector4(dims[0], i, j, k)
+                        new Vector4(dims[0], i, j, k),
+                        this.adjustedMaterial(material, i, j, k)
                     )
                 }
             }
@@ -26,7 +27,7 @@ class Grid4 extends Object4 {
         return ret;
     }
 
-    getY(): Object4 {
+    getY(material: MaterialSet): Object4 {
         let ret = new Object4(`${this.name}-Y-axis`);
         const dims = this.dims;
         for (let i = Math.ceil(-dims[0]); i <= Math.floor(dims[0]); i++) {
@@ -34,7 +35,8 @@ class Grid4 extends Object4 {
                 for (let k = Math.ceil(-dims[3]); k <= Math.floor(dims[3]); k++) {
                     ret.addNewLine(
                         new Vector4(i, -dims[1], j, k),
-                        new Vector4(i, dims[1], j, k)
+                        new Vector4(i, dims[1], j, k),
+                        this.adjustedMaterial(material, i, j, k)
                     )
                 }
             }
@@ -42,7 +44,7 @@ class Grid4 extends Object4 {
         return ret;
     }
 
-    getZ(): Object4 {
+    getZ(material: MaterialSet): Object4 {
         let ret = new Object4(`${this.name}-Z-axis`);
         const dims = this.dims;
         for (let i = Math.ceil(-dims[0]); i <= Math.floor(dims[0]); i++) {
@@ -50,7 +52,8 @@ class Grid4 extends Object4 {
                 for (let k = Math.ceil(-dims[3]); k <= Math.floor(dims[3]); k++) {
                     ret.addNewLine(
                         new Vector4(i, j, -dims[2], k),
-                        new Vector4(i, j, dims[2], k)
+                        new Vector4(i, j, dims[2], k),
+                        this.adjustedMaterial(material, i, j, k)
                     )
                 }
             }
@@ -58,7 +61,7 @@ class Grid4 extends Object4 {
         return ret;
     }
 
-    getW(): Object4 {
+    getW(material: MaterialSet): Object4 {
         let ret = new Object4(`${this.name}-W-axis`);
         const dims = this.dims;
         for (let i = Math.ceil(-dims[0]); i <= Math.floor(dims[0]); i++) {
@@ -66,40 +69,23 @@ class Grid4 extends Object4 {
                 for (let k = Math.ceil(-dims[2]); k <= Math.floor(dims[2]); k++) {
                     ret.addNewLine(
                         new Vector4(i, j, k, -dims[3]),
-                        new Vector4(i, j, k, dims[3])
+                        new Vector4(i, j, k, dims[3]),
+                        this.adjustedMaterial(material, i, j, k)
                     )
                 }
             }
         }
         return ret;
     }
-}
 
-
-class Tesseract extends Object4 {
-    constructor(name: string) {
-        super(name);
-        for (let i of [0, 1]) {
-            for (let j of [0, 1]) {
-                for (let k of [0, 1]) {
-                    for (let l of [0, 1]) {
-                        this.G0.push(new Vector4(i, j, k, l));
-                    }
-                }
-            }
-        }
-        for (let i = 0; i < this.G0.length; i++) {
-            for (let j = i + 1; j < this.G0.length; j++) {
-                if (new Vector4().copy(this.G0[i]).sub(this.G0[j]).manhattanLength() === 1) {
-                    this.G1.push({v_start: i, v_end: j});
-                }
-            }
-        }
+    private adjustedMaterial(mat: MaterialSet, i: number, j: number, k: number) {
+        let origin = (i==0) && (j==0) && (k==0);
+        let opacity = 2/(2+Math.max(Math.abs(i), Math.abs(j), Math.abs(k)));
+        return origin ? mat.clone().withOpacity(opacity).withLinewidth(3)
+                : mat.clone().withOpacity(opacity)
     }
 }
-
-
-class TessearctFaces extends Object4 {
+class Tesseract extends Object4 {
     constructor(name: string) {
         super(name);
         for (let i of [0, 1]) {
@@ -167,6 +153,14 @@ class TessearctFaces extends Object4 {
         })
         this.G3.push(...facets);
     }
+
+    showFaceBorderOnly() {
+        this.materialSet = INVISIBLE;
+        let colors = [0xff0000, 0x00ff00, 0x0000ff, 0x00ffff, 0xffff00, 0xff00ff, 0xffffff, 0xff7f00];
+        for (let i = 0; i < 8; i++) {
+            this.generateFacetBorder(i, 0.02, getLineMaterial(colors[i], 2));
+        }
+    }
 }
 
 
@@ -212,8 +206,9 @@ class ParallelepipedCell extends Object4 {
 
 
 
+const INVISIBLE = new MaterialSet()
 const WHITE = getLineMaterial(0xffffff);
-const RED = getLineMaterial(0xff8f8f);
+const RED = getLineMaterial(0xff8f8f, 1, true);
 const GREEN = getLineMaterial(0x00ff00);
 const BLUE = getLineMaterial(0x8f8fff);
 const YELLOW = getLineMaterial(0xffff00);
@@ -221,7 +216,6 @@ const YELLOW = getLineMaterial(0xffff00);
 export {
     Grid4,
     Tesseract,
-    TessearctFaces,
     LineObject,
     ParallelepipedCell,
     WHITE,

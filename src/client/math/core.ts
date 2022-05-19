@@ -2,7 +2,8 @@ import {
     Vector3,
     Vector4,
     Scene,
-    Matrix4
+    Matrix4,
+    Plane
 } from 'three'
 import { LineMaterial } from 'three/examples/jsm/lines/LineMaterial';
 import { LineGeometry } from 'three/examples/jsm/lines/LineGeometry';
@@ -37,11 +38,25 @@ function average(vec_array: Vector4[]) {
 
 type Material = LineMaterial;
 
-function getLineMaterial(color: number, width: number = 0.002, dashed: boolean = false) {
+function getLineMaterial(color: number, width: number = 1, dashedWhenOccluded: boolean = false) {
+    let size = 0.5
+    const clippingPlanes = [
+        new Plane(new Vector3(0, 0, 1), size),
+        new Plane(new Vector3(0, 0, -1), size),
+        new Plane(new Vector3(0, 1, 0), size),
+        new Plane(new Vector3(0, -1, 0), size),
+        new Plane(new Vector3(1, 0, 0), size),
+        new Plane(new Vector3(-1, 0, 0), size),
+    ];
     return new MaterialSet(
-        new LineMaterial({color: color, linewidth: width}),
-        new LineMaterial({color: color, linewidth: width, dashed: true, dashScale: 200})
+        new LineMaterial({color: color, linewidth: width*0.001, clippingPlanes: clippingPlanes}),
+        dashedWhenOccluded ? new LineMaterial({color: color, linewidth: width*0.001, dashed: true, dashScale: 200, clippingPlanes: clippingPlanes}) : undefined
     );
+}
+
+function getFrameMaterial(color: number) {
+    let width=1;
+    return new MaterialSet(new LineMaterial({color: color, linewidth: width*0.001}));
 }
 
 class MaterialSet {
@@ -52,12 +67,36 @@ class MaterialSet {
         this.visible = visible;
         this.occluded = occluded;
     }
-}
 
-const getDefaultMaterialSet = () => new MaterialSet(
-    new LineMaterial({color: 0xffffff, linewidth:0.001}),
-    new LineMaterial({color: 0xffffff, linewidth:0.001, dashed: true, dashScale: 200})
-);
+    clone() {
+        return new MaterialSet(
+            this.visible? this.visible.clone() : undefined,
+            this.occluded? this.occluded.clone() : undefined
+        );
+    }
+
+    withOpacity(opacity: number) {
+        if (this.visible) {
+            this.visible.transparent = true;
+            this.visible.opacity = opacity;
+        }
+        if (this.occluded) {
+            this.occluded.transparent = true;
+            this.occluded.opacity = opacity;
+        }
+        return this;
+    }
+
+    withLinewidth(width: number) {
+        if (this.visible) {
+            this.visible.linewidth = width * 0.001;
+        }
+        if (this.occluded) {
+            this.occluded.linewidth = width * 0.001;
+        }
+        return this;
+    }
+}
 
 interface Edge {
     v_start: number,
@@ -87,7 +126,7 @@ class Object4 {
         this.G1 = G1;
         this.G2 = G2;
         this.G3 = G3;
-        this.materialSet = getDefaultMaterialSet();
+        this.materialSet = getLineMaterial(0xffffff, 1, false);
     }
 
     withMaterial(m: MaterialSet) {
@@ -103,8 +142,12 @@ class Object4 {
         return this;
     }
 
-    addNewLine(a: Vector4, b: Vector4) {
-        this.G1.push({v_start: this.G0.length, v_end: this.G0.length + 1});
+    addNewLine(a: Vector4, b: Vector4, materialSet?: MaterialSet) {
+        this.G1.push({
+            v_start: this.G0.length,
+            v_end: this.G0.length + 1,
+            materialSet: materialSet
+        });
         this.G0.push(a, b);
     }
 
@@ -251,7 +294,7 @@ class Camera4 {
                     this.center.clone().add(DA).add(dB).sub(dC),
                 ],
                 [0,1,2,3].map(i=>({v_start: i, v_end: (i+1)%4}))
-            ).withMaterial(getLineMaterial(0x0046ad)).withAlpha(opacity),
+            ).withMaterial(getFrameMaterial(0x0046ad)).withAlpha(opacity),
             new Object4(
                 'cam-frame-1', [
                     this.center.clone().sub(DA).add(dB).add(dC),
@@ -260,7 +303,7 @@ class Camera4 {
                     this.center.clone().sub(DA).add(dB).sub(dC),
                 ],
                 [0,1,2,3].map(i=>({v_start: i, v_end: (i+1)%4}))
-            ).withMaterial(getLineMaterial(0x009b48)).withAlpha(opacity),
+            ).withMaterial(getFrameMaterial(0x009b48)).withAlpha(opacity),
             new Object4(
                 'cam-frame-0', [
                     this.center.clone().add(DB).add(dA).add(dC),
@@ -269,7 +312,7 @@ class Camera4 {
                     this.center.clone().add(DB).add(dA).sub(dC),
                 ],
                 [0,1,2,3].map(i=>({v_start: i, v_end: (i+1)%4}))
-            ).withMaterial(getLineMaterial(0xffffff)).withAlpha(opacity),
+            ).withMaterial(getFrameMaterial(0xffffff)).withAlpha(opacity),
             new Object4(
                 'cam-frame-1', [
                     this.center.clone().sub(DB).add(dA).add(dC),
@@ -278,7 +321,7 @@ class Camera4 {
                     this.center.clone().sub(DB).add(dA).sub(dC),
                 ],
                 [0,1,2,3].map(i=>({v_start: i, v_end: (i+1)%4}))
-            ).withMaterial(getLineMaterial(0xffd500)).withAlpha(opacity),
+            ).withMaterial(getFrameMaterial(0xffd500)).withAlpha(opacity),
             new Object4(
                 'cam-frame-0', [
                     this.center.clone().add(DC).add(dA).add(dB),
@@ -287,7 +330,7 @@ class Camera4 {
                     this.center.clone().add(DC).add(dA).sub(dB),
                 ],
                 [0,1,2,3].map(i=>({v_start: i, v_end: (i+1)%4}))
-            ).withMaterial(getLineMaterial(0xb71234)).withAlpha(opacity),
+            ).withMaterial(getFrameMaterial(0xb71234)).withAlpha(opacity),
             new Object4(
                 'cam-frame-1', [
                     this.center.clone().sub(DC).add(dA).add(dB),
@@ -296,7 +339,7 @@ class Camera4 {
                     this.center.clone().sub(DC).add(dA).sub(dB),
                 ],
                 [0,1,2,3].map(i=>({v_start: i, v_end: (i+1)%4}))
-            ).withMaterial(getLineMaterial(0xff5800)).withAlpha(opacity)
+            ).withMaterial(getFrameMaterial(0xff5800)).withAlpha(opacity)
         ]
     }
 }
@@ -357,6 +400,8 @@ class Scene4 {
                 }
 
                 if (e.occludedIntervals) {
+                    console.log(obj.name, e.occludedIntervals);
+
                     e.occludedIntervals.push(1);
                     let occluded = false;
                     let start = 0;
@@ -535,11 +580,12 @@ function computeOcclusion(f: Vector4[], lineSegment: Vector4[], viewpoint: Vecto
     A_data.push(...f2.toArray());
     A_data.push(...view.toArray());
 
-    const A = new Matrix4();
+    const A = new Matrix4().fromArray(A_data);
+
     if (A.determinant() === 0) {
         return null;
     }
-    A.fromArray(A_data).invert();
+    A.invert();
     // console.log("A=", A, new Vector4(0, 0, 0, 1).applyMatrix4(A));
     return computeOcclusionOnNormalizedGeometry([
         sub(lineSegment[0], offset).applyMatrix4(A),
@@ -603,6 +649,7 @@ function getLineIntersection(a0: Vector4, a1: Vector4, b0: Vector4, b1: Vector4)
 function computeOcclusionOnNormalizedGeometry(lineSegment: Vector4[]) {
     // assume the facet is the unit cube determined by e1, e2, e3;
     // and the view point is at e4 (0, 0, 0, 1);
+
     const a = lineSegment[0];
     const b = lineSegment[1];
     if (a.w >= 0 && b.w >= 0) {
@@ -667,6 +714,9 @@ function computeOcclusionOnNormalizedGeometry(lineSegment: Vector4[]) {
         const max = a.w / (a.w - b.w);
         const pa = project(a);
         const pb = project(b);
+        if (sub(pa, pb).length() < 1e-5) {
+            return null;
+        }
         const range = getCommonRange(pa, pb);
         if (range === null) {
             return null;
@@ -677,26 +727,30 @@ function computeOcclusionOnNormalizedGeometry(lineSegment: Vector4[]) {
         const e_w = new Vector4(0, 0, 0, 1);
         const lambda0 = getLineIntersection(e_w, pr0, a, b);
         const lambda1 = getLineIntersection(e_w, pr1, a, b);
-        // console.log("B", lineSegment, lambda0, lambda1, min, max);
+        //  console.log("B", lineSegment, lambda0, lambda1, min, max);
         return [
             Math.max(min, lambda0),
             Math.min(max, lambda1)
         ];
     }
     if (a.w >= 0 && b.w < 0) {
-        // console.log("C");
+
 
         const min = a.w / (a.w - b.w);
         const max = 1;
         const pa = project(a);
         const pb = project(b);
+        if (sub(pa, pb).length() < 1e-5) {
+            return null;
+        }
         const range = getCommonRange(pa, pb);
+
         if (range === null) {
             return null;
         }
         const pr0 = pa.clone().lerp(pb, range[0]);
         const pr1 = pa.clone().lerp(pb, range[1]);
-
+        // console.log("C", min, max, pa, pb, range);
         const e_w = new Vector4(0, 0, 0, 1);
         const lambda0 = getLineIntersection(e_w, pr0, a, b);
         const lambda1 = getLineIntersection(e_w, pr1, a, b);
@@ -710,6 +764,9 @@ function computeOcclusionOnNormalizedGeometry(lineSegment: Vector4[]) {
         const max = 1;
         const pa = project(a);
         const pb = project(b);
+        if (sub(pa, pb).length() < 1e-5) {
+            return null;
+        }
         const range = getCommonRange(pa, pb);
 
         if (range === null) {
@@ -721,7 +778,7 @@ function computeOcclusionOnNormalizedGeometry(lineSegment: Vector4[]) {
         const e_w = new Vector4(0, 0, 0, 1);
         const lambda0 = getLineIntersection(e_w, pr0, a, b);
         const lambda1 = getLineIntersection(e_w, pr1, a, b);
-        // console.log("D", lambda0, lambda1, pa, pb, range);
+        //  console.log("D", lambda0, lambda1, pa, pb, range);
         return [
             Math.max(min, lambda0),
             Math.min(max, lambda1)
@@ -733,6 +790,7 @@ export {
     Object4,
     Camera4,
     CameraQueue,
+    MaterialSet,
     Scene4,
     Scene3WithMemoryTracker,
     getLineMaterial,

@@ -1,24 +1,45 @@
 import * as THREE from 'three'
 import { LineBasicMaterial, Plane, Scene, Vector3, Vector4 } from 'three'
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls'
-import { Camera4, CameraQueue,  Object4, Scene3WithMemoryTracker, Scene4 } from './math/core'
-import { Grid4, Tesseract, RED, GREEN, BLUE, YELLOW, WHITE, ParallelepipedCell, LineObject, TessearctFaces } from './math/primitives'
+import { Camera4, CameraQueue,  computeOcclusion,  Object4, Scene3WithMemoryTracker, Scene4 } from './math/core'
+import { Grid4, Tesseract, RED, GREEN, BLUE, YELLOW, WHITE, ParallelepipedCell, LineObject } from './math/primitives'
 import { test } from './test'
 
 // const tesseract = new Tesseract('tesseract').withMaterial(WHITE);
-const tesseract = new TessearctFaces('tesseract');
+const tesseract = new Tesseract('tesseract');
 const facet = new ParallelepipedCell('facet-0',
     [[0, 0, 0, 0], [0, 1, 0, 0], [0, 0, 0, 1], [0, 0, 1, 0]].map((e: number[]) => {
         return new Vector4().fromArray(e);
     })
 )
 
-const grid = new Grid4('tess', [1.1, 1.1, 1.1, 0.1]);
+
+// let r = computeOcclusion(
+//     [
+//         new Vector4(0, 0, 0, 0),
+//         new Vector4(0, 0, 0, 1),
+//         new Vector4(0, 0, 1, 0),
+//         new Vector4(0, 1, 0, 0)
+//     ],
+//     [
+//         new Vector4(0, 0, 0, 1),
+//         new Vector4(1, 0, 0, 1)
+//     ],
+//     new Vector4(-10, 0, 0, 1)
+// )
+
+// console.log(r);
+
+
+
+
+let N = 5.1;
+const grid = new Grid4('tess', [N+1, N, N, 0.1]);
 const line = new LineObject('line',
     new Vector4(1, 1.1, 1, 0),
     new Vector4(1, -1.1, 1, 0));
 const camera4 = new Camera4(
-    new Vector4(-5, 0, 0, 0),
+    new Vector4(-10, 0, 0, 1),
     [[1, 0, 0, 0], [0, 1, 0, 0], [0, 0, 0, 1], [0, 0, 1, 0]].map((e: number[]) => {
         return new Vector4().fromArray(e);
     }),
@@ -28,28 +49,18 @@ const camera4 = new Camera4(
 
 let camQueue = new CameraQueue(150, camera4, 10);
 
-tesseract.generateFacetBorder(2, 0.05, YELLOW);
+// tesseract.showFaceBorderOnly();
 
 const scene4 = new Scene4([
     tesseract,
     // facet,
-    grid.getX().withMaterial(RED),
-    grid.getY().withMaterial(GREEN),
-    grid.getZ().withMaterial(BLUE),
-    grid.getW().withMaterial(YELLOW)
+    grid.getX(RED),
+    grid.getY(GREEN),
+    // grid.getZ(BLUE),
+    // grid.getW().withMaterial(YELLOW)
     // line
 ])
 
-
-let Y = grid.getY();
-
-let I = facet.computeOcclusion(camera4.pos,
-    new Vector4(1, -1.1, 1, 0),
-    new Vector4(1, 1.1, 1, 0));
-
-// let I1 = facet.computeOcclusion(camera4.pos,
-//     Y.G0[16], Y.G0[17]);
-console.log('I0 = ', I, Y.G0[16], Y.G0[17])
 
 const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000)
 camera.position.z = 2
@@ -57,10 +68,11 @@ camera.position.z = 2
 
 const renderer = new THREE.WebGLRenderer({antialias: true})
 renderer.setSize(window.innerWidth, window.innerHeight)
+renderer.localClippingEnabled = true;
 // renderer.setClearColor(0xff99c7)
-renderer.clippingPlanes = [
-    new Plane(new Vector3(0, 0, 1), 0.8)
-]
+// renderer.clippingPlanes = [
+//     new Plane(new Vector3(0, 0, 1), 0.8)
+// ]
 document.body.appendChild(renderer.domElement)
 
 const controls = new OrbitControls(camera, renderer.domElement)
