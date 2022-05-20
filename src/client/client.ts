@@ -1,11 +1,13 @@
 import * as THREE from 'three'
-import { LineBasicMaterial, Plane, Scene, Vector3, Vector4 } from 'three'
+import { Camera, LineBasicMaterial, Plane, Scene, Vector3, Vector4, WebGLRenderer } from 'three'
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls'
+import { StereoEffect } from 'three/examples/jsm/effects/StereoEffect';
+import { Animation_1 } from './animations'
 import { Camera4, CameraQueue,  computeOcclusion,  Object4, Scene3WithMemoryTracker, Scene4 } from './math/core'
 import { Grid4, Tesseract, RED, GREEN, BLUE, YELLOW, WHITE, ParallelepipedCell, LineObject } from './math/primitives'
 import { test } from './test'
 
-// const tesseract = new Tesseract('tesseract').withMaterial(WHITE);
+
 const tesseract = new Tesseract('tesseract');
 const facet = new ParallelepipedCell('facet-0',
     [[0, 0, 0, 0], [0, 1, 0, 0], [0, 0, 0, 1], [0, 0, 1, 0]].map((e: number[]) => {
@@ -14,36 +16,14 @@ const facet = new ParallelepipedCell('facet-0',
 )
 
 
-// let r = computeOcclusion(
-//     [
-//         new Vector4(0, 0, 0, 0),
-//         new Vector4(0, 0, 0, 1),
-//         new Vector4(0, 0, 1, 0),
-//         new Vector4(0, 1, 0, 0)
-//     ],
-//     [
-//         new Vector4(0, 0, 0, 1),
-//         new Vector4(1, 0, 0, 1)
-//     ],
-//     new Vector4(-10, 0, 0, 1)
-// )
-
-// console.log(r);
-
-
-
-
 let N = 5.1;
 const grid = new Grid4('tess', [N+1, N, N, 0.1]);
-const line = new LineObject('line',
-    new Vector4(1, 1.1, 1, 0),
-    new Vector4(1, -1.1, 1, 0));
 const camera4 = new Camera4(
     new Vector4(-10, 0, 0, 1),
     [[1, 0, 0, 0], [0, 1, 0, 0], [0, 0, 0, 1], [0, 0, 1, 0]].map((e: number[]) => {
         return new Vector4().fromArray(e);
     }),
-    1
+    2
 );
 
 
@@ -56,36 +36,22 @@ const scene4 = new Scene4([
     // facet,
     grid.getX(RED),
     grid.getY(GREEN),
-    // grid.getZ(BLUE),
+    grid.getZ(BLUE),
     // grid.getW().withMaterial(YELLOW)
     // line
 ])
 
-
 const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000)
+
 camera.position.z = 2
 
 
 const renderer = new THREE.WebGLRenderer({antialias: true})
 renderer.setSize(window.innerWidth, window.innerHeight)
 renderer.localClippingEnabled = true;
-// renderer.setClearColor(0xff99c7)
-// renderer.clippingPlanes = [
-//     new Plane(new Vector3(0, 0, 1), 0.8)
-// ]
 document.body.appendChild(renderer.domElement)
 
 const controls = new OrbitControls(camera, renderer.domElement)
-
-
-
-window.addEventListener('resize', onWindowResize, false)
-function onWindowResize() {
-    camera.aspect = window.innerWidth / window.innerHeight
-    camera.updateProjectionMatrix()
-    renderer.setSize(window.innerWidth, window.innerHeight)
-    render()
-}
 
 const scene = new Scene3WithMemoryTracker();
 
@@ -97,33 +63,24 @@ window.addEventListener('keydown', (e) => {
 }, false);
 
 
-function animate() {
-    requestAnimationFrame(animate)
-
-    // scene.traverse(function( node ) {
-    //     if ( node instanceof THREE.Mesh || node instanceof THREE.Line) {
-    //         node.rotation.y += 0.001;
-    //     }
-    //     // camera4.move(4, 0.001);
-    // });
-
-    controls.update()
-    render()
-}
+let effect = new StereoEffect( renderer );
+effect.setEyeSeparation(-0.01);
 
 function render() {
     if (sceneUpdated) {
         scene.clearScene();
-        // camera4.tilt(1, 0.005);
-        // camera4.move(0, -0.005)
         camQueue.pushCamera(camera4);
         scene4.render(scene, camQueue);
-        // frame.renderToScene3(scene);
         renderer.render(scene, camera);
         sceneUpdated = false;
     } else {
-        renderer.render(scene, camera);
+        // renderer.render(scene, camera);
+        effect.render(scene, camera)
     }
 }
-animate()
-// test()
+
+
+const a1 = new Animation_1();
+let a1r = a1.getCallbackHandler(renderer);
+
+window.setInterval(a1r, 1000/15);

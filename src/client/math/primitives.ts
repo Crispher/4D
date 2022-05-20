@@ -80,7 +80,7 @@ class Grid4 extends Object4 {
 
     private adjustedMaterial(mat: MaterialSet, i: number, j: number, k: number) {
         let origin = (i==0) && (j==0) && (k==0);
-        let opacity = 2/(2+Math.max(Math.abs(i), Math.abs(j), Math.abs(k)));
+        let opacity = 4/(4+5*Math.max(Math.abs(i), Math.abs(j), Math.abs(k)));
         return origin ? mat.clone().withOpacity(opacity).withLinewidth(3)
                 : mat.clone().withOpacity(opacity)
     }

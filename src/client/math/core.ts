@@ -400,13 +400,12 @@ class Scene4 {
                 }
 
                 if (e.occludedIntervals) {
-                    console.log(obj.name, e.occludedIntervals);
 
                     e.occludedIntervals.push(1);
                     let occluded = false;
                     let start = 0;
-                    let s = V[e.v_start];
-                    let t = V[e.v_end];
+                    let s = obj.G0[e.v_start];
+                    let t = obj.G0[e.v_end];
                     // console.log(e, obj.G0[e.v_start], obj.G0[e.v_end]);
                     for (let switchPoint of e.occludedIntervals) {
                         if (switchPoint - start > 1e-5) {
@@ -415,10 +414,13 @@ class Scene4 {
                             let vj = s.clone();
                             vj.lerp(t, switchPoint);
 
+
+                            let vi3 = current_cam.project(vi);
+                            let vj3 = current_cam.project(vj);
                             if (occluded) {
-                                scene3.addLine(vi, vj, localMaterial.occluded);
+                                scene3.addLine(vi3, vj3, localMaterial.occluded);
                             } else {
-                                scene3.addLine(vi, vj, localMaterial.visible);
+                                scene3.addLine(vi3, vj3, localMaterial.visible);
                             }
                         }
 
