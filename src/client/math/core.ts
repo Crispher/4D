@@ -54,9 +54,8 @@ function getLineMaterial(color: number, width: number = 1, dashedWhenOccluded: b
     );
 }
 
-function getFrameMaterial(color: number) {
-    let width=1;
-    return new MaterialSet(new LineMaterial({color: color, linewidth: width*0.001}));
+function getFrameMaterial(color: number, linewidth: number) {
+    return new MaterialSet(new LineMaterial({color: color, linewidth: linewidth*0.001}));
 }
 
 class MaterialSet {
@@ -276,8 +275,7 @@ class Camera4 {
         this.center = add(this.pos, multiplyScalar(this.orientation[0], this.f));
     }
 
-    getFrame(size: number, opacity: number): Object4[] {
-        const eps = 0.05;
+    getFrame(size: number, opacity: number, eps: number, linewidth: number[]): Object4[] {
         const dA = multiplyScalar(this.orientation[1], size*(1-eps));
         const dB = multiplyScalar(this.orientation[2], size*(1-eps));
         const dC = multiplyScalar(this.orientation[3], size*(1-eps));
@@ -294,7 +292,7 @@ class Camera4 {
                     this.center.clone().add(DA).add(dB).sub(dC),
                 ],
                 [0,1,2,3].map(i=>({v_start: i, v_end: (i+1)%4}))
-            ).withMaterial(getFrameMaterial(0x0046ad)).withAlpha(opacity),
+            ).withMaterial(getFrameMaterial(0x0046ad, linewidth[0])).withAlpha(opacity),
             new Object4(
                 'cam-frame-1', [
                     this.center.clone().sub(DA).add(dB).add(dC),
@@ -303,7 +301,7 @@ class Camera4 {
                     this.center.clone().sub(DA).add(dB).sub(dC),
                 ],
                 [0,1,2,3].map(i=>({v_start: i, v_end: (i+1)%4}))
-            ).withMaterial(getFrameMaterial(0x009b48)).withAlpha(opacity),
+            ).withMaterial(getFrameMaterial(0x009b48, linewidth[1])).withAlpha(opacity),
             new Object4(
                 'cam-frame-0', [
                     this.center.clone().add(DB).add(dA).add(dC),
@@ -312,7 +310,7 @@ class Camera4 {
                     this.center.clone().add(DB).add(dA).sub(dC),
                 ],
                 [0,1,2,3].map(i=>({v_start: i, v_end: (i+1)%4}))
-            ).withMaterial(getFrameMaterial(0xffffff)).withAlpha(opacity),
+            ).withMaterial(getFrameMaterial(0xffffff, linewidth[2])).withAlpha(opacity),
             new Object4(
                 'cam-frame-1', [
                     this.center.clone().sub(DB).add(dA).add(dC),
@@ -321,7 +319,7 @@ class Camera4 {
                     this.center.clone().sub(DB).add(dA).sub(dC),
                 ],
                 [0,1,2,3].map(i=>({v_start: i, v_end: (i+1)%4}))
-            ).withMaterial(getFrameMaterial(0xffd500)).withAlpha(opacity),
+            ).withMaterial(getFrameMaterial(0xffd500, linewidth[3])).withAlpha(opacity),
             new Object4(
                 'cam-frame-0', [
                     this.center.clone().add(DC).add(dA).add(dB),
@@ -330,7 +328,7 @@ class Camera4 {
                     this.center.clone().add(DC).add(dA).sub(dB),
                 ],
                 [0,1,2,3].map(i=>({v_start: i, v_end: (i+1)%4}))
-            ).withMaterial(getFrameMaterial(0xb71234)).withAlpha(opacity),
+            ).withMaterial(getFrameMaterial(0xb71234, linewidth[4])).withAlpha(opacity),
             new Object4(
                 'cam-frame-1', [
                     this.center.clone().sub(DC).add(dA).add(dB),
@@ -339,7 +337,7 @@ class Camera4 {
                     this.center.clone().sub(DC).add(dA).sub(dB),
                 ],
                 [0,1,2,3].map(i=>({v_start: i, v_end: (i+1)%4}))
-            ).withMaterial(getFrameMaterial(0xff5800)).withAlpha(opacity)
+            ).withMaterial(getFrameMaterial(0xff5800, linewidth[5])).withAlpha(opacity)
         ]
     }
 }
@@ -350,6 +348,8 @@ class CameraQueue {
     current: number = 0;
     sampleRate: number;
     totalFrames: number;
+    frameGap: number = 0.05;
+    frameLinewidth: number[] = [];
 
     constructor(totalFrames: number, camera: Camera4, sampleRate: number) {
         this.totalFrames = totalFrames;
@@ -442,19 +442,11 @@ class Scene4 {
                 let cam_i = camera.getPastCamera(i);
                 let alpha = 0.3
                 let beta = 0.2
-                for (const obj of cam_i.getFrame(0.5, alpha/(i*beta+alpha))) {
+                for (const obj of cam_i.getFrame(0.5, alpha/(i*beta+alpha), camera.frameGap, camera.frameLinewidth)) {
                     let V = obj.G0.map(p => current_cam.project(p));
                     for (const e of obj.G1) {
                         scene3.addLine(V[e.v_start], V[e.v_end], obj.materialSet.visible);
                     }
-                }
-            }
-        }
-        else {
-            for (const obj of current_cam.getFrame(0.5, 0.5)) {
-                let V = obj.G0.map(p => current_cam.project(p));
-                for (const e of obj.G1) {
-                    scene3.addLine(V[e.v_start], V[e.v_end], obj.materialSet.visible);
                 }
             }
         }
