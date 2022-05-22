@@ -2,7 +2,7 @@ import * as THREE from 'three'
 import { Camera, LineBasicMaterial, Plane, Scene, Vector3, Vector4, WebGLRenderer } from 'three'
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls'
 import { StereoEffect } from 'three/examples/jsm/effects/StereoEffect';
-import { Animation_1, EmptyFrameAnimation } from './animations'
+import { Animation_1, EmptyFrameAnimation, MovingEmptyFrameAnimation } from './animations'
 import { Camera4, CameraQueue,  computeOcclusion,  Object4, Scene3WithMemoryTracker, Scene4 } from './math/core'
 import { Grid4, Tesseract, RED, GREEN, BLUE, YELLOW, WHITE, ParallelepipedCell, LineObject } from './math/primitives'
 import { test } from './test'
@@ -83,7 +83,8 @@ function render() {
 const a1 = new Animation_1();
 let a1r = a1.getCallbackHandler(renderer);
 
-const animation_1 = new EmptyFrameAnimation();
+// const animation_1 = new EmptyFrameAnimation();
+const animation_1 = new MovingEmptyFrameAnimation();
 
 // window.setInterval(render, 1000/15);
 window.setInterval(animation_1.getCallbackHandler(renderer), 1000/60);

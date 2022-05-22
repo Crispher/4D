@@ -68,9 +68,14 @@ abstract class BaseAnimation {
         this.camQueue = camQueue;
     }
 
-    advance = () => {
-        this.nSteps++;
-        this.time = this.nSteps / this.frameRate;
+    advance = (t?: number) => {
+        if (t) {
+            this.time = t;
+        }
+        else {
+            this.nSteps++;
+            this.time += 1 / this.frameRate;
+        }
     }
 
     abstract prepareFrame(): void;
@@ -89,7 +94,6 @@ abstract class BaseAnimation {
 
 
 class Animation_1 extends BaseAnimation {
-    // 空相框，旋转3 - 相框各面颜色分离 - 上下边框闪烁 - 四周侧边框闪烁
     constructor() {
         let cam4 = new Camera4(
             new Vector4(-10, 0, 0, 1),
@@ -119,6 +123,7 @@ class Animation_1 extends BaseAnimation {
 }
 
 class EmptyFrameAnimation extends BaseAnimation {
+    // 空相框，旋转3 - 相框各面颜色分离 - 上下边框闪烁 - 四周侧边框闪烁
     constructor() {
         let cam4 = new Camera4(
             new Vector4(-10, 0, 0, 1),
@@ -169,7 +174,63 @@ class EmptyFrameAnimation extends BaseAnimation {
     }
 }
 
+
+class MovingEmptyFrameAnimation extends BaseAnimation {
+    constructor() {
+        let cam4 = new Camera4(
+            new Vector4(-10, 0, 0, 1),
+            [[1, 0, 0, 0], [0, 1, 0, 0], [0, 0, 0, 1], [0, 0, 1, 0]].map((e: number[]) => {
+                return new Vector4().fromArray(e);
+            }),
+            2
+        );
+        let camQueue = new CameraQueue(60, cam4, 1);
+
+        super(cam4, camQueue);
+        this.advance(20);
+    }
+
+    setCam3Pos(t: number) {
+        let k = 1;
+        t = pwl(t, [
+            {t: 0, x: Math.PI * 1.2},
+            {t: 5, x: Math.PI * 1.1},
+            {t: 7, x: Math.PI * 1.5},
+            {t: INFTY, x: 0}
+        ], easeInOutCubic)
+        let kt = k * t;
+        this.cam3.position.set(2*Math.sin(kt), 0.25, 2*Math.cos(kt));
+        this.cam3.lookAt(0, 0, 0);
+    }
+
+    setCam4Pos(t: number) {
+        this.cam4.pos.y -= 1/this.frameRate * pwl(t, [
+            {t: 0, x: 0.1},
+            {t: 10, x: 0},
+        ], Math.floor);
+
+        this.cam4.pos.z += 1/this.frameRate * pwl(t, [
+            {t: 12, x: 0.1},
+            {t: 22, x: 0},
+        ], Math.floor);
+
+        if (t >= 22)
+            this.cam4.tilt(3, 0.002);
+
+        this.camQueue.opacityAlpha = 1;
+        this.camQueue.opacityBeta = 0.1;
+    }
+
+
+    prepareFrame(): void {
+        let t = this.time;
+        this.setCam3Pos(t);
+        this.setCam4Pos(t);
+    }
+}
+
 export {
     Animation_1,
     EmptyFrameAnimation,
+    MovingEmptyFrameAnimation,
 }

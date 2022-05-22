@@ -349,7 +349,10 @@ class CameraQueue {
     sampleRate: number;
     totalFrames: number;
     frameGap: number = 0.05;
-    frameLinewidth: number[] = [];
+    frameLinewidth: number[] = [3, 3, 3, 3, 3, 3];
+
+    opacityAlpha = 1;
+    opacityBeta = 1;
 
     constructor(totalFrames: number, camera: Camera4, sampleRate: number) {
         this.totalFrames = totalFrames;
@@ -366,6 +369,10 @@ class CameraQueue {
     getPastCamera(i: number) {
         let index = (this.current+this.totalFrames-i) % this.totalFrames;
         return this.queue[index];
+    }
+
+    getOpacity(i : number)  {
+        return this.opacityAlpha / (this.opacityAlpha + i * this.opacityBeta);
     }
 
     pushCamera(cam: Camera4) {
@@ -440,9 +447,8 @@ class Scene4 {
                     continue;
                 }
                 let cam_i = camera.getPastCamera(i);
-                let alpha = 0.3
-                let beta = 0.2
-                for (const obj of cam_i.getFrame(0.5, alpha/(i*beta+alpha), camera.frameGap, camera.frameLinewidth)) {
+                let opacity = camera.getOpacity(i)
+                for (const obj of cam_i.getFrame(0.5, opacity, camera.frameGap, camera.frameLinewidth)) {
                     let V = obj.G0.map(p => current_cam.project(p));
                     for (const e of obj.G1) {
                         scene3.addLine(V[e.v_start], V[e.v_end], obj.materialSet.visible);
