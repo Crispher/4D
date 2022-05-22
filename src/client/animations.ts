@@ -48,6 +48,10 @@ function easeInOutCubic(x: number): number {
     return x < 0.5 ? 4 * x * x * x : 1 - Math.pow(-2 * x + 2, 3) / 2;
 }
 
+function easeInOutSine(x: number): number {
+    return -(Math.cos(Math.PI * x) - 1) / 2;
+    }
+
 abstract class BaseAnimation {
     scene4: Scene4;
     cam4: Camera4;
@@ -56,16 +60,17 @@ abstract class BaseAnimation {
     cam3: Camera;
 
     nSteps = 0;
-    frameRate = 60;
+    readonly frameRate;
     time = 0;
 
-    constructor(cam4: Camera4, camQueue: CameraQueue) {
+    constructor(cam4: Camera4, camQueue: CameraQueue, frameRate: number) {
         this.scene4 = new Scene4([]);
         this.scene3 = new Scene3WithMemoryTracker();
         this.cam3 = new THREE.PerspectiveCamera(50, window.innerWidth / window.innerHeight, 0.2, 1000);
 
         this.cam4 = cam4;
         this.camQueue = camQueue;
+        this.frameRate = frameRate;
     }
 
     advance = (t?: number) => {
@@ -76,6 +81,15 @@ abstract class BaseAnimation {
             this.nSteps++;
             this.time += 1 / this.frameRate;
         }
+    }
+
+    setCam3PosAngles = (r: number, theta: number, phi: number) => {
+        this.cam3.position.set(
+            r*Math.cos(phi)*Math.sin(theta),
+            r*Math.sin(phi),
+            r*Math.cos(phi)*Math.cos(theta)
+        );
+        this.cam3.lookAt(0, 0, 0);
     }
 
     abstract prepareFrame(): void;
@@ -94,7 +108,7 @@ abstract class BaseAnimation {
 
 
 class Animation_1 extends BaseAnimation {
-    constructor() {
+    constructor(frameRate: number) {
         let cam4 = new Camera4(
             new Vector4(-10, 0, 0, 1),
             [[1, 0, 0, 0], [0, 1, 0, 0], [0, 0, 0, 1], [0, 0, 1, 0]].map((e: number[]) => {
@@ -102,9 +116,9 @@ class Animation_1 extends BaseAnimation {
             }),
             2
         );
-        let camQueue = new CameraQueue(150, cam4, 10);
+        let camQueue = new CameraQueue(150, 10);
 
-        super(cam4, camQueue);
+        super(cam4, camQueue, frameRate);
 
         let tess = new Tesseract('tess');
         this.scene4.objects.push(tess);
@@ -124,7 +138,7 @@ class Animation_1 extends BaseAnimation {
 
 class EmptyFrameAnimation extends BaseAnimation {
     // 空相框，旋转3 - 相框各面颜色分离 - 上下边框闪烁 - 四周侧边框闪烁
-    constructor() {
+    constructor(frameRate: number) {
         let cam4 = new Camera4(
             new Vector4(-10, 0, 0, 1),
             [[1, 0, 0, 0], [0, 1, 0, 0], [0, 0, 0, 1], [0, 0, 1, 0]].map((e: number[]) => {
@@ -132,9 +146,9 @@ class EmptyFrameAnimation extends BaseAnimation {
             }),
             2
         );
-        let camQueue = new CameraQueue(150, cam4, 10);
+        let camQueue = new CameraQueue(150, 10);
 
-        super(cam4, camQueue);
+        super(cam4, camQueue, frameRate);
     }
 
     cam3Pos(t: number) {
@@ -176,7 +190,7 @@ class EmptyFrameAnimation extends BaseAnimation {
 
 
 class MovingEmptyFrameAnimation extends BaseAnimation {
-    constructor() {
+    constructor(frameRate: number) {
         let cam4 = new Camera4(
             new Vector4(-10, 0, 0, 1),
             [[1, 0, 0, 0], [0, 1, 0, 0], [0, 0, 0, 1], [0, 0, 1, 0]].map((e: number[]) => {
@@ -184,10 +198,10 @@ class MovingEmptyFrameAnimation extends BaseAnimation {
             }),
             2
         );
-        let camQueue = new CameraQueue(60, cam4, 1);
+        let camQueue = new CameraQueue(60, 1);
 
-        super(cam4, camQueue);
-        this.advance(20);
+        super(cam4, camQueue, frameRate);
+        // this.advance(20);
     }
 
     setCam3Pos(t: number) {
@@ -229,8 +243,99 @@ class MovingEmptyFrameAnimation extends BaseAnimation {
     }
 }
 
+
+class GridAnimation extends BaseAnimation {
+
+    constructor(frameRate: number) {
+        super(new Camera4(
+            new Vector4(-10, 0, 0, 1),
+                [[1, 0, 0, 0], [0, 1, 0, 0], [0, 0, 0, 1], [0, 0, 1, 0]].map((e: number[]) => {
+                    return new Vector4().fromArray(e);
+                }),
+                2
+            ),
+            new CameraQueue(5, 1),
+            frameRate
+        );
+        // this.advance(20)
+    }
+
+    setCam3Pos(t: number) {
+        let theta = pwl(t, [
+            {t: 0, x: Math.PI * 0},
+            {t: 35, x: Math.PI * 1},
+            {t: INFTY, x: 0}
+        ], easeInOutSine);
+        let phi = pwl(t, [
+            {t: 0, x: Math.PI * 0.03},
+            {t: 35, x: Math.PI * 0.03},
+            {t: INFTY, x: 0}
+        ]);
+
+        this.setCam3PosAngles(2.5, theta, phi);
+    }
+
+    setCam4Pos(t: number) {
+        let theta = pwl(t, [
+            {t: 0, x: Math.PI * 0.05},
+            {t: 35, x: Math.PI * 0.05},
+            {t: INFTY, x: 0}
+        ], easeInOutSine);
+        let r = 10;
+        this.cam4.pos.set(-r * Math.cos(theta), 0, 0, r * Math.sin(theta));
+        this.cam4.lookAt(new Vector4(0, 0, 0, 0));
+    }
+
+    setGridObject(t: number) {
+        if (t < 8 || (27 < t && t < 35)) {
+            let l = pwl(t, [
+                {t: 4, x: 0},
+                {t: 5, x: 8.9},
+                {t: INFTY, x: 8.9}
+            ], easeInOutSine)
+            const dim = [
+                l, l, l, 0.1
+            ];
+            const grid = new Grid4('grid', dim);
+            grid.beta = pwl(t, [
+                {t: 0, x: 0.5},
+                {t: 28, x: 0.5},
+                {t: 30, x: 2},
+                {t: 32, x: 2},
+                {t: 34, x: 0.5},
+                {t: INFTY, x: 0}
+            ], easeInOutCubic);
+
+            let X = grid.getX(RED);
+            let Y = grid.getY(GREEN);
+            let Z = grid.getZ(BLUE);
+
+            this.scene4.objects = [
+                X, Y, Z
+            ]
+        }
+
+        if (20 < t && t < 26) {
+            this.scene4.find('grid-Y-axis').hidden = true;
+            this.scene4.find('grid-Z-axis').hidden = true;
+        } else {
+            this.scene4.find('grid-Y-axis').hidden = false;
+            this.scene4.find('grid-Z-axis').hidden = false;
+        }
+    }
+
+
+    prepareFrame(): void {
+        let t = this.time;
+        this.setCam3Pos(t);
+        this.setCam4Pos(t);
+        this.setGridObject(t);
+    }
+}
+
 export {
     Animation_1,
     EmptyFrameAnimation,
     MovingEmptyFrameAnimation,
+    GridAnimation
 }

@@ -2,10 +2,12 @@ import * as THREE from 'three'
 import { Camera, LineBasicMaterial, Plane, Scene, Vector3, Vector4, WebGLRenderer } from 'three'
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls'
 import { StereoEffect } from 'three/examples/jsm/effects/StereoEffect';
-import { Animation_1, EmptyFrameAnimation, MovingEmptyFrameAnimation } from './animations'
+import { Animation_1, EmptyFrameAnimation, GridAnimation, MovingEmptyFrameAnimation } from './animations'
 import { Camera4, CameraQueue,  computeOcclusion,  Object4, Scene3WithMemoryTracker, Scene4 } from './math/core'
 import { Grid4, Tesseract, RED, GREEN, BLUE, YELLOW, WHITE, ParallelepipedCell, LineObject } from './math/primitives'
 import { test } from './test'
+
+console.log('start');
 
 
 const tesseract = new Tesseract('tesseract');
@@ -27,7 +29,7 @@ const camera4 = new Camera4(
 );
 
 
-let camQueue = new CameraQueue(150, camera4, 10);
+let camQueue = new CameraQueue(150, 10);
 
 // tesseract.showFaceBorderOnly();
 
@@ -80,11 +82,10 @@ function render() {
 }
 
 
-const a1 = new Animation_1();
-let a1r = a1.getCallbackHandler(renderer);
-
 // const animation_1 = new EmptyFrameAnimation();
-const animation_1 = new MovingEmptyFrameAnimation();
+// const animation_1 = new MovingEmptyFrameAnimation();
+const animation_1 = new GridAnimation(10);
 
 // window.setInterval(render, 1000/15);
-window.setInterval(animation_1.getCallbackHandler(renderer), 1000/60);
+console.log('hihihi ', animation_1.frameRate);
+window.setInterval(animation_1.getCallbackHandler(renderer), 1000/animation_1.frameRate);

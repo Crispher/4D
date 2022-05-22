@@ -5,6 +5,7 @@ import { Object4, getLineMaterial, MaterialSet } from "./core";
 
 class Grid4 extends Object4 {
     public dims: number[];
+    beta: number = 1;
     constructor(name: string, dims: number[]) {
         super(name);
         this.dims = dims;
@@ -80,7 +81,7 @@ class Grid4 extends Object4 {
 
     private adjustedMaterial(mat: MaterialSet, i: number, j: number, k: number) {
         let origin = (i==0) && (j==0) && (k==0);
-        let opacity = 4/(4+5*Math.max(Math.abs(i), Math.abs(j), Math.abs(k)));
+        let opacity = 1/(1+this.beta*Math.max(Math.abs(i), Math.abs(j), Math.abs(k)));
         return origin ? mat.clone().withOpacity(opacity).withLinewidth(3)
                 : mat.clone().withOpacity(opacity)
     }
@@ -207,11 +208,12 @@ class ParallelepipedCell extends Object4 {
 
 
 const INVISIBLE = new MaterialSet()
-const WHITE = getLineMaterial(0xffffff);
-const RED = getLineMaterial(0xff8f8f, 1, true);
-const GREEN = getLineMaterial(0x00ff00);
-const BLUE = getLineMaterial(0x8f8fff);
-const YELLOW = getLineMaterial(0xffff00);
+let w = 1.5;
+const WHITE = getLineMaterial(0xffffff, w);
+const RED = getLineMaterial(0xff8f8f, w, true);
+const GREEN = getLineMaterial(0x00ff00, w);
+const BLUE = getLineMaterial(0x87CEFA, w);
+const YELLOW = getLineMaterial(0xffff00, w);
 
 export {
     Grid4,

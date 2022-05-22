@@ -39,14 +39,15 @@ function average(vec_array: Vector4[]) {
 type Material = LineMaterial;
 
 function getLineMaterial(color: number, width: number = 1, dashedWhenOccluded: boolean = false) {
-    let size = 0.5
+    let size = 0.5;
+    let d = 1 + 1e-4;
     const clippingPlanes = [
-        new Plane(new Vector3(0, 0, 1), size),
-        new Plane(new Vector3(0, 0, -1), size),
-        new Plane(new Vector3(0, 1, 0), size),
-        new Plane(new Vector3(0, -1, 0), size),
-        new Plane(new Vector3(1, 0, 0), size),
-        new Plane(new Vector3(-1, 0, 0), size),
+        new Plane(new Vector3(0, 0, d), size),
+        new Plane(new Vector3(0, 0, -d), size),
+        new Plane(new Vector3(0, d, 0), size),
+        new Plane(new Vector3(0, -d, 0), size),
+        new Plane(new Vector3(d, 0, 0), size),
+        new Plane(new Vector3(-d, 0, 0), size),
     ];
     return new MaterialSet(
         new LineMaterial({color: color, linewidth: width*0.001, clippingPlanes: clippingPlanes}),
@@ -112,6 +113,7 @@ interface Facet {
 
 class Object4 {
     name: string;
+    hidden: boolean = false;
     readonly G0: Vector4[];
     readonly G1: Edge[];
     readonly G2: Int32Array[];
@@ -206,6 +208,10 @@ class Camera4 {
     readonly orientation: Vector4[];
     private center: Vector4;
 
+    private updateCenter() {
+        this.center = add(this.pos, multiplyScalar(this.orientation[0], this.f));
+    }
+
     constructor(pos: Vector4, orientation: Vector4[], focalLength: number) {
         this.pos = pos;
         this.f = focalLength;
@@ -227,7 +233,7 @@ class Camera4 {
 
     move(i: number, ds: number) {
         this.pos.add(multiplyScalar(this.orientation[i], ds));
-        this.center.add(multiplyScalar(this.orientation[i], ds));
+        this.updateCenter();
     }
 
     tilt(i: number, ds: number) {
@@ -238,7 +244,21 @@ class Camera4 {
         this.orientation[0].normalize();
         removeComponent(this.orientation[i], this.orientation[0]);
         this.orientation[i].normalize();
-        this.center = add(this.pos, multiplyScalar(this.orientation[0], this.f));
+        this.updateCenter();
+    }
+
+    lookAt(p: Vector4) {
+        this.orientation[0] = sub(p, this.pos).normalize();
+        removeComponent(this.orientation[1], this.orientation[0]);
+        this.orientation[1].normalize();
+        removeComponent(this.orientation[2], this.orientation[0]);
+        removeComponent(this.orientation[2], this.orientation[1]);
+        this.orientation[2].normalize();
+        removeComponent(this.orientation[3], this.orientation[0]);
+        removeComponent(this.orientation[3], this.orientation[1]);
+        removeComponent(this.orientation[3], this.orientation[1]);
+        this.orientation[3].normalize();
+        this.updateCenter();
     }
 
     keyboardEventHandler(event: KeyboardEvent) {
@@ -344,7 +364,7 @@ class Camera4 {
 
 
 class CameraQueue {
-    queue: Camera4[] = [];
+    queue: (Camera4|null)[] = [];
     current: number = 0;
     sampleRate: number;
     totalFrames: number;
@@ -354,21 +374,31 @@ class CameraQueue {
     opacityAlpha = 1;
     opacityBeta = 1;
 
-    constructor(totalFrames: number, camera: Camera4, sampleRate: number) {
+    constructor(totalFrames: number, sampleRate: number) {
         this.totalFrames = totalFrames;
         for (let i = 0; i < totalFrames; i++) {
-            this.queue.push(camera.clone());
+            this.queue.push(null);
         }
         this.sampleRate = sampleRate;
     }
 
     isActiveFrame(i: number) {
-        return i == 0 || (this.current-i) % this.sampleRate == 0
+        try {
+            this.getPastCamera(i);
+            return i == 0 || (this.current-i) % this.sampleRate == 0
+        } catch {
+            return false;
+        }
     }
 
-    getPastCamera(i: number) {
+    getPastCamera(i: number) : Camera4 {
         let index = (this.current+this.totalFrames-i) % this.totalFrames;
-        return this.queue[index];
+        let cam = this.queue[index];
+        if (cam) {
+            return cam;
+        } else {
+            throw 'camera undefined';
+        }
     }
 
     getOpacity(i : number)  {
@@ -378,7 +408,7 @@ class CameraQueue {
     pushCamera(cam: Camera4) {
         let prev = this.current;
         this.current = (prev + 1) % this.totalFrames;
-        this.queue[this.current].copy(cam);
+        this.queue[this.current] = cam.clone();
     }
 }
 
@@ -389,13 +419,26 @@ class Scene4 {
         this.objects = objects;
     }
 
-    render(scene3: Scene3WithMemoryTracker, camera: CameraQueue | Camera4) {
-        let current_cam: Camera4 = (camera instanceof Camera4) ? camera : camera.getPastCamera(0);
+    find(name: string) {
+        for (let obj of this.objects) {
+            if (obj.name === name) {
+                return obj;
+            }
+        }
+        throw 'obj not found';
+    }
+
+    render(scene3: Scene3WithMemoryTracker, camera: CameraQueue) {
+        let current_cam = camera.getPastCamera(0);
 
         // render objects
         this.clearOcclusion();
         this.computeOcclusion(current_cam);
         for (const obj of this.objects) {
+            if (obj.hidden) {
+                continue;
+            }
+
             let V = obj.G0.map(p => current_cam.project(p));
 
             for (const e of obj.G1) {
@@ -441,18 +484,20 @@ class Scene4 {
         }
 
         // render camera
-        if (camera instanceof CameraQueue) {
-            for (let i = 0; i < camera.totalFrames; i++) {
-                if (!camera.isActiveFrame(i)) {
-                    continue;
-                }
-                let cam_i = camera.getPastCamera(i);
-                let opacity = camera.getOpacity(i)
-                for (const obj of cam_i.getFrame(0.5, opacity, camera.frameGap, camera.frameLinewidth)) {
-                    let V = obj.G0.map(p => current_cam.project(p));
-                    for (const e of obj.G1) {
-                        scene3.addLine(V[e.v_start], V[e.v_end], obj.materialSet.visible);
-                    }
+
+        for (let i = 0; i < camera.totalFrames; i++) {
+            if (!camera.isActiveFrame(i)) {
+                continue;
+            }
+            let cam_i = camera.getPastCamera(i);
+            if (!cam_i) {
+                continue;
+            }
+            let opacity = camera.getOpacity(i)
+            for (const obj of cam_i.getFrame(0.5, opacity, camera.frameGap, camera.frameLinewidth)) {
+                let V = obj.G0.map(p => current_cam.project(p));
+                for (const e of obj.G1) {
+                    scene3.addLine(V[e.v_start], V[e.v_end], obj.materialSet.visible);
                 }
             }
         }
@@ -461,9 +506,15 @@ class Scene4 {
 
     computeOcclusion(cam: Camera4) {
         for (const obj of this.objects) {
+            if (obj.hidden) {
+                continue;
+            }
             for (let e of obj.G1) {
                 e.occludedIntervalSet = [];
                 for (const occluder of this.objects) {
+                    if (occluder.hidden) {
+                        continue;
+                    }
                     let I = occluder.computeOcclusion(cam.pos, obj.G0[e.v_start], obj.G0[e.v_end])
                     e.occludedIntervalSet.push(...I);
                 }
@@ -471,6 +522,9 @@ class Scene4 {
         }
 
         for (const obj of this.objects) {
+            if (obj.hidden) {
+                continue;
+            }
             for (const e of obj.G1) {
                 if (e.occludedIntervalSet) {
                     e.occludedIntervals = getVisibleIntervals(e.occludedIntervalSet);
