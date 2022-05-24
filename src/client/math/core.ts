@@ -371,7 +371,6 @@ class CameraQueue {
     frameGap: number = 0.05;
     frameLinewidth: number[] = [3, 3, 3, 3, 3, 3];
 
-    opacityAlpha = 1;
     opacityBeta = 1;
 
     constructor(totalFrames: number, sampleRate: number) {
@@ -402,7 +401,7 @@ class CameraQueue {
     }
 
     getOpacity(i : number)  {
-        return this.opacityAlpha / (this.opacityAlpha + i * this.opacityBeta);
+        return 1 / (1 + i * this.opacityBeta);
     }
 
     pushCamera(cam: Camera4) {

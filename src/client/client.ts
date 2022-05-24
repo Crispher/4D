@@ -2,7 +2,7 @@ import * as THREE from 'three'
 import { Camera, LineBasicMaterial, Plane, Scene, Vector3, Vector4, WebGLRenderer } from 'three'
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls'
 import { StereoEffect } from 'three/examples/jsm/effects/StereoEffect';
-import { Animation_1, EmptyFrameAnimation, GridAnimation, MovingEmptyFrameAnimation } from './animations'
+import { Animation_1, EmptyFrameAnimation, GridAnimation_Part1, GridAnimation_Part2, GridAnimation_Part3, MovingEmptyFrameAnimation } from './animations'
 import { Camera4, CameraQueue,  computeOcclusion,  Object4, Scene3WithMemoryTracker, Scene4 } from './math/core'
 import { Grid4, Tesseract, RED, GREEN, BLUE, YELLOW, WHITE, ParallelepipedCell, LineObject } from './math/primitives'
 import { test } from './test'
@@ -82,9 +82,12 @@ function render() {
 }
 
 
-// const animation_1 = new EmptyFrameAnimation();
-// const animation_1 = new MovingEmptyFrameAnimation();
-const animation_1 = new GridAnimation(10);
+// const animation_1 = new EmptyFrameAnimation(8);
+const animation_1 = new MovingEmptyFrameAnimation(8);
+// const animation_1 = new GridAnimation_Part1(10);
+animation_1.playbackSpeed = 0.25;
+
+// const animation_1 = new GridAnimation_Part3(12, 0.2);
 
 // window.setInterval(render, 1000/15);
 console.log('hihihi ', animation_1.frameRate);
