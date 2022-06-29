@@ -24,6 +24,8 @@
     "webpack-merge": "^5.8.0"
   },
   "dependencies": {
+    "@types/ccapture.js": "^1.1.1",
+    "ccapture.js": "^1.1.0",
     "express": "^4.17.2",
     "ts-node": "^10.7.0"
   }

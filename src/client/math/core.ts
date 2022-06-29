@@ -51,7 +51,7 @@ function getLineMaterial(color: number, width: number = 1, dashedWhenOccluded: b
     ];
     return new MaterialSet(
         new LineMaterial({color: color, linewidth: width*0.001, clippingPlanes: clippingPlanes}),
-        dashedWhenOccluded ? new LineMaterial({color: color, linewidth: width*0.001, dashed: true, dashScale: 200, clippingPlanes: clippingPlanes}) : undefined
+        dashedWhenOccluded ? new LineMaterial({color: color, linewidth: width*0.001, dashed: true, dashScale: 50, clippingPlanes: clippingPlanes}) : undefined
     );
 }
 
@@ -171,6 +171,12 @@ class Object4 {
         return ret;
     }
 
+    translate(dx: Vector4) {
+        for (let v of this.G0) {
+            v.add(dx);
+        }
+    }
+
     generateFacetBorder(facet: number, negativeMargin: number, materialSet?: MaterialSet) {
         let f_vertices = this.G3[facet].vertices.map(v => this.G0[v]);
         let f_center = average(f_vertices);
@@ -256,7 +262,7 @@ class Camera4 {
         this.orientation[2].normalize();
         removeComponent(this.orientation[3], this.orientation[0]);
         removeComponent(this.orientation[3], this.orientation[1]);
-        removeComponent(this.orientation[3], this.orientation[1]);
+        removeComponent(this.orientation[3], this.orientation[2]);
         this.orientation[3].normalize();
         this.updateCenter();
     }
@@ -545,13 +551,6 @@ class Scene4 {
 class Scene3WithMemoryTracker extends Scene {
     geometries: LineGeometry[] = [];
     lines: Line2[] = [];
-    debugMaterial = new LineMaterial({
-        dashed: true,
-        dashSize: 3,
-        linewidth: 0.002,
-        dashScale: 100
-    })
-
     constructor() {
         super();
     }
@@ -559,7 +558,6 @@ class Scene3WithMemoryTracker extends Scene {
     addLineGeometry(geo: LineGeometry, material: Material) {
         this.geometries.push(geo);
         const line = new Line2(geo, material);
-        // const line = new Line2(geo, this.debugMaterial);
         this.lines.push(line);
         line.computeLineDistances();
         line.scale.set(1, 1, 1);

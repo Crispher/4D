@@ -82,12 +82,12 @@ class Grid4 extends Object4 {
     private adjustedMaterial(mat: MaterialSet, i: number, j: number, k: number) {
         let origin = (i==0) && (j==0) && (k==0);
         let opacity = 1/(1+this.beta*Math.max(Math.abs(i), Math.abs(j), Math.abs(k)));
-        return origin ? mat.clone().withOpacity(opacity).withLinewidth(3)
+        return origin ? mat.clone().withOpacity(opacity).withLinewidth(2)
                 : mat.clone().withOpacity(opacity)
     }
 }
 class Tesseract extends Object4 {
-    constructor(name: string) {
+    constructor(name: string, offset?: Vector4) {
         super(name);
         for (let i of [0, 1]) {
             for (let j of [0, 1]) {
@@ -153,13 +153,17 @@ class Tesseract extends Object4 {
             return {vertices: v}
         })
         this.G3.push(...facets);
+
+        if (offset) {
+            this.translate(offset);
+        }
     }
 
-    showFaceBorderOnly() {
+    showFaceBorderOnly(faceBorderLinewidth: number=3.5) {
         this.materialSet = INVISIBLE;
-        let colors = [0xff0000, 0x00ff00, 0x0000ff, 0x00ffff, 0xffff00, 0xff00ff, 0xffffff, 0xff7f00];
+        let colors = [0xff2020, 0xffff00, 0x7B68EE, 0x00ffff, 0x80FF00, 0x003399ff, 0xffffff, 0xff7f00];
         for (let i = 0; i < 8; i++) {
-            this.generateFacetBorder(i, 0.02, getLineMaterial(colors[i], 2));
+            this.generateFacetBorder(i, 0.02, getLineMaterial(colors[i], faceBorderLinewidth));
         }
     }
 }
@@ -210,7 +214,7 @@ class ParallelepipedCell extends Object4 {
 const INVISIBLE = new MaterialSet()
 let w = 1.5;
 const WHITE = getLineMaterial(0xffffff, w);
-const RED = getLineMaterial(0xff8f8f, w, true);
+const RED = getLineMaterial(0xff8f8f, w);
 const GREEN = getLineMaterial(0x00ff00, w);
 const BLUE = getLineMaterial(0x87CEFA, w);
 const YELLOW = getLineMaterial(0xffff00, w);
