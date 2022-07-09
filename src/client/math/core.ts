@@ -237,9 +237,16 @@ class Camera4 {
         )
     }
 
-    move(i: number, ds: number) {
-        this.pos.add(multiplyScalar(this.orientation[i], ds));
-        this.updateCenter();
+    move(i: number, ds: number, fix_distance: boolean = false) {
+        if (!fix_distance) {
+            this.pos.add(multiplyScalar(this.orientation[i], ds));
+            this.updateCenter();
+        } else {
+            let d = this.pos.length();
+            this.pos.add(multiplyScalar(this.orientation[i], ds));
+            this.pos.normalize().multiplyScalar(d);
+            this.lookAt(new Vector4(0, 0, 0, 0));
+        }
     }
 
     tilt(i: number, ds: number) {
@@ -270,7 +277,12 @@ class Camera4 {
     lookAt_w_as_up(p: Vector4) {
         this.orientation[0] = sub(p, this.pos).normalize();
 
-        this.orientation[2].set(0, 0, 0, 1);
+        let alpha = Math.acos(this.orientation[0].dot(new Vector4(0, 0, 0, 1)));
+        if (alpha < 0) {
+            this.orientation[2].set(0, 0, 0, -1)
+        } else {
+            this.orientation[2].set(0, 0, 0, 1);
+        }
         removeComponent(this.orientation[2], this.orientation[0]);
         this.orientation[2].normalize();
 
@@ -298,15 +310,10 @@ class Camera4 {
             return;
         }
 
-        if (event.ctrlKey) {
-            const s = 0.01;
-            const speed = keyMap.status === MotionStatus.POSITIVE ? s: -s;
-            this.tilt(keyMap.axis, speed);
-        } else {
-            const s = 0.02;
-            const speed = keyMap.status === MotionStatus.POSITIVE ? s: -s;
-            this.move(keyMap.axis, speed);
-        }
+        const s = 0.02;
+        const speed = keyMap.status === MotionStatus.POSITIVE ? s: -s;
+        this.move(keyMap.axis, speed, true);
+
     }
 
     clone() {
@@ -620,17 +627,17 @@ enum MotionStatus {
 
 function getKeyMap(keyCode: number) {
     switch(keyCode) {
-        case 49: // 1
+        case 65: // 1
             return { axis: 1, status: MotionStatus.NEGATIVE};
-        case 52: // 4
+        case 81: // 4
             return { axis: 1, status: MotionStatus.POSITIVE}
-        case 50: // 2
+        case 68: // 2
             return { axis: 3, status: MotionStatus.NEGATIVE};
-        case 53: // 5
+        case 69: // 5
             return { axis: 3, status: MotionStatus.POSITIVE};
-        case 51: // 3
+        case 83: // 3
             return { axis: 2, status: MotionStatus.NEGATIVE};
-        case 54: // 6
+        case 87: // 6
             return { axis: 2, status: MotionStatus.POSITIVE}
     }
     return undefined;

@@ -3,19 +3,15 @@ import { Camera, LineBasicMaterial, Plane, Scene, Vector3, Vector4, WebGLRendere
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls'
 import { StereoEffect } from 'three/examples/jsm/effects/StereoEffect';
 import { LineMaterial } from 'three/examples/jsm/lines/LineMaterial';
-// import { Animation_1, EmptyFrameAnimation, Ep2PreviewAnimation, Ep2PreviewAnimation_MultipleTesseract, ExerciseAnimation, get3DAnimationHandler, GridAnimation_Part1, GridAnimation_Part2, GridAnimation_Part3, MovingEmptyFrameAnimation, TesseractAnimation_Part1 } from './animations'
 import { Camera4, CameraQueue,  computeOcclusion,  Object4, Scene3WithMemoryTracker, Scene4 } from './math/core'
-import { Grid4, Tesseract, RED, GREEN, BLUE, YELLOW, WHITE, ParallelepipedCell, LineObject } from './math/primitives'
-import { test } from './test'
-
-import * as EP2 from './animations/ep2';
+import { Grid4, Tesseract, RED, GREEN, BLUE, YELLOW, WHITE,  } from './math/primitives'
 
 
 
 const tesseracts = [
-    new Tesseract('tesseract'),
+    new Tesseract('tesseract').showFaceBorderOnly(3.5),
     // new Tesseract('tess2', new Vector4(0, 0, -1, 0)).showFaceBorderOnly(3.5),
-    new Tesseract('tess2', new Vector4(0, -1, -1, 0)), // occluded
+    // new Tesseract('tess2', new Vector4(0, -1, -1, 0)), // occluded
     // new Tesseract('tess2', new Vector4(0, -1, 0, 0)).showFaceBorderOnly(2),
     // new Tesseract('tess2', new Vector4(-1, -1, -1, 0)),
     // new Tesseract('tess2', new Vector4(-1, 0, 0, 0)),
@@ -25,30 +21,26 @@ const tesseracts = [
 ];
 
 
-let N = 1.5;
+let N = 2.1;
 const grid = new Grid4('tess', [N+1, N, N, 0.1]);
 const camera4 = new Camera4(
     // new Vector4(-10, 0, 0, 1),
-    new Vector4(-4, 2, 2, 2),
+    new Vector4(-5, 0, 0, 0),
     [[1, 0, 0, 0], [0, 1, 0, 0], [0, 0, 0, 1], [0, 0, 1, 0]].map((e: number[]) => {
         return new Vector4().fromArray(e);
     }),
     1.2
 );
-camera4.lookAt(new Vector4(0, 0, 0, 1));
+camera4.lookAt_w_as_up(new Vector4(0, 0, 0, 0));
 
-let camQueue = new CameraQueue(150, 10);
+let camQueue = new CameraQueue(5, 1);
 
-// tesseract.showFaceBorderOnly();
 
 const scene4 = new Scene4([
     ...tesseracts,
-    // facet,
     grid.getX(RED),
     grid.getY(GREEN),
-    grid.getZ(BLUE),
-    // grid.getW().withMaterial(YELLOW)
-    // line
+    grid.getZ(BLUE)
 ])
 
 console.log(window.innerHeight, window.innerWidth);
@@ -60,9 +52,12 @@ camera.position.z = 2
 
 const renderer = new THREE.WebGLRenderer({antialias: true})
 renderer.setSize(window.innerWidth, window.innerHeight)
-// renderer.setSize(3840, 2160);
 renderer.localClippingEnabled = true;
-document.body.appendChild(renderer.domElement)
+const container = document.getElementById('container');
+
+if (container) {
+    container.appendChild(renderer.domElement)
+}
 
 const controls = new OrbitControls(camera, renderer.domElement)
 
@@ -79,7 +74,7 @@ window.addEventListener('keydown', (e) => {
 let effect = new StereoEffect( renderer );
 effect.setEyeSeparation(-0.01);
 
-var capturer = new CCapture( { format: 'webm', framerate: 48} );
+
 
 function render() {
     if (sceneUpdated) {
@@ -92,37 +87,10 @@ function render() {
         // renderer.render(scene, camera);
         renderer.render(scene, camera)
     }
-    capturer.capture(renderer.domElement);
+
 }
 
-window.addEventListener('keydown', (e) => {
-    if (e.which === 83) {
-        capturer.start()
-    }
-    if (e.which === 68) {
-        capturer.save();
-    }
-}, false);
 
 
+window.setInterval(render, 24);
 
-// const animation_1 = new EmptyFrameAnimation(8);
-// const animation_1 = new MovingEmptyFrameAnimation(8);
-// const animation_1 = new GridAnimation_Part1(10);
-// const animation_1 = new TesseractAnimation_Part1(10, 1);
-// animation_1.playbackSpeed = 1;
-
-// const animation_1 = new GridAnimation_Part3(12, 0.2);
-// const animation_1 = new TesseractAnimation_Part1(8, .1);
-// const animation_1 = new ExerciseAnimation(8, 0.1);
-// const animation_1 = new Ep2PreviewAnimation(8, .1);
-// window.setInterval(render, 1000/15);
-
-let render3 = EP2.get3DAnimationHandler(renderer, capturer)
-
-let animation = new EP2.P2(18);
-let render_animation = animation.getCallbackHandler(renderer)//, capturer);
-
-// window.setInterval(animation_1.getCallbackHandler(renderer), 1000/animation_1.frameRate);
-// window.setInterval(render, 24);
-window.setInterval(render_animation, 1000/18);

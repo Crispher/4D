@@ -3,20 +3,126 @@
     <head>
         <meta charset="utf-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
-        <title>Three.js </title>
+        <title>4D Viewport by yugu233 </title>
         <script src="./CCapture.js"></script>
         <script src="./webm-writer-0.2.0.js"></script>
         <script src="./download.js"></script>
 
-        <style>
-            body {
-                overflow: hidden;
-                margin: 0px;
+        <style type="text/css">
+            html {
+                height: 100%;
             }
-        </style>
+            body {
+                margin: 0;
+                padding: 0;
+                background-color: #000;
+                color: #ffffff;
+                font-family: 'roboto condensed', sans-serif;
+                font-size: 13px;
+                line-height: 20px;
+                height: 100%;
+                overflow: hidden
+            }
+            #scroller{
+                position: fixed;
+                left: 0;
+                top: 0;
+                right: 0;
+                bottom: 0;
+                z-index: 100;
+                overflow: scroll;
+                background-color: #000;
+            }
+            a {
+                color: #fff;
+                text-decoration: none;
+                border-bottom: 1px dotted #fff;
+            }
+            a:hover {
+                border-bottom: 1px solid #fff
+            }
+            #title {
+                z-index: 100;
+                position: absolute;
+                top: 20px;
+                width: 350px;
+                left: 20px;
+                background-color: rgba(0,0,0,0.2);
+                border-radius: 3px;
+                padding: 10px;
+                overflow: auto;
+            }
+            #options{
+                position: absolute;
+                top: 20px;
+                width: 400px;
+                right: 20px;
+                background-color: coral;
+                border-radius: 3px;
+                padding: 10px;
+                overflow: hidden;
+            }
+            h1{
+                font-size: 20px;
+                color: coral;
+                margin: 0;
+            }
+            h2{
+                font-size: 16px;
+                color: coral;
+                margin: 0;
+            }
+            #viewport {
+                position: absolute;
+                top: 32px;
+                left: 0;
+                right: 300px;
+                bottom: 0;
+            }
+
+                #viewport #info {
+                    text-shadow: 1px 1px 0 rgba(0,0,0,0.25);
+                    pointer-events: none;
+                }
+            </style>
     </head>
 
     <body>
+
+        <div id="container"></div>
+        <div id="title">
+
+                <h1>四维空间视窗</h1>
+
+                <p>这是四维空间的四维相机拍下的一张三维照片，在这个演示中，你可以移动这个四维相机，从不同的角度观察你面前的超立方体和超平面！</p>
+
+                <p>如果你还没有看过我的视频，请先观看视频 <a href="https://www.bilibili.com/video/BV1Z34y1L7LF">bilibili: 四维空间之旅 Ep.1</a> 视频里包含了一些必要的概念讲解。</p>
+
+                <h2>操作</h2>
+                <ul>
+                    <li>Q/A键：将相机向蓝/绿方向移动</li>
+                    <li>W/S键：将相机向上（白）/下（黄）方向移动</li>
+                    <li>E/D键：将相机向红/橙方向移动</li>
+                    <li>鼠标：转动/缩放三维照片（四维相机位置不变）</li>
+                </ul>
+
+                <h2>注意</h2>
+                <p>由于内存管理原因，偶尔会出现页面崩溃，此时刷新页面即可。</p>
+
+                <h2>一些简单的新手任务</h2>
+                <p>如果你已经理解了四维相机，超平面，超立方体等基本概念，可以尝试完成以下任务：</p>
+                <ul>
+                    <li>模仿《<a href="https://www.bilibili.com/video/BV1Z34y1L7LF">bilibili: 四维空间之旅 Ep.1</a>》中出现的移动。</li>
+                    <li>超立方体的八个侧面都是什么颜色的？</li>
+                    <li>八个侧面中，四组两两相对的侧面是哪四对？</li>
+                    <li>对于每一个侧面，移动四维相机到该侧面的正面（此时画面中只有这一个侧面）。</li>
+                    <li>找到一个四维相机的位置，可以同时看到四个侧面。</li>
+                </ul>
+
+                <h2>更多</h2>
+                <p>请关注我的b站账号 <a href="https://space.bilibili.com/613069855">yugu233</a>。更多有趣的视频和演示正在制作中。代码也会在之后公开。</p>
+        </div>
+
         <script type="module" src="bundle.js"></script>
     </body>
 </html>
