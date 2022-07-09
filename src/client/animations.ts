@@ -61,6 +61,10 @@ abstract class BaseAnimation {
     scene3: Scene3WithMemoryTracker;
     cam3: Camera;
 
+    animation_started: boolean;
+    animation_ended: boolean;
+    animation_saved: boolean;
+
     nSteps = 0;
     readonly frameRate;
     time = 0;
@@ -74,6 +78,10 @@ abstract class BaseAnimation {
         this.cam4 = cam4;
         this.camQueue = camQueue;
         this.frameRate = frameRate;
+
+        this.animation_started = false;
+        this.animation_ended = false;
+        this.animation_saved = false;
     }
 
     advance = (t?: number) => {
@@ -101,13 +109,25 @@ abstract class BaseAnimation {
 
     abstract prepareFrame(): void;
 
-    getCallbackHandler = (renderer: WebGLRenderer) => {
+    getCallbackHandler = (renderer: WebGLRenderer, capturer?: CCapture) => {
         return () => {
             this.prepareFrame();
             this.scene3.clearScene();
             this.camQueue.pushCamera(this.cam4);
             this.scene4.render(this.scene3, this.camQueue);
             renderer.render(this.scene3, this.cam3);
+            if (capturer) {
+                if (!this.animation_started) {
+                    capturer.start();
+                    this.animation_started = true;
+                }
+                if (this.animation_ended && !this.animation_saved) {
+                    capturer.save();
+                    this.animation_saved = true;
+                }
+                capturer.capture(renderer.domElement);
+            }
+
             this.advance();
         }
     }
@@ -1102,6 +1122,12 @@ const get3DAnimationHandler = (renderer: Renderer) =>
 
 
 export {
+    BaseAnimation,
+    easeInOutCubic,
+    easeInOutSine,
+    pwl,
+    impulses,
+    INFTY,
     Animation_1,
     EmptyFrameAnimation,
     MovingEmptyFrameAnimation,

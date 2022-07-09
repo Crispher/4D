@@ -51,7 +51,7 @@ function getLineMaterial(color: number, width: number = 1, dashedWhenOccluded: b
     ];
     return new MaterialSet(
         new LineMaterial({color: color, linewidth: width*0.001, clippingPlanes: clippingPlanes}),
-        dashedWhenOccluded ? new LineMaterial({color: color, linewidth: width*0.001, dashed: true, dashScale: 50, clippingPlanes: clippingPlanes}) : undefined
+        dashedWhenOccluded ? new LineMaterial({color: color, linewidth: width/2*0.001, dashed: true, dashScale: 50, clippingPlanes: clippingPlanes}) : undefined
     );
 }
 
@@ -260,6 +260,30 @@ class Camera4 {
         removeComponent(this.orientation[2], this.orientation[0]);
         removeComponent(this.orientation[2], this.orientation[1]);
         this.orientation[2].normalize();
+        removeComponent(this.orientation[3], this.orientation[0]);
+        removeComponent(this.orientation[3], this.orientation[1]);
+        removeComponent(this.orientation[3], this.orientation[2]);
+        this.orientation[3].normalize();
+        this.updateCenter();
+    }
+
+    lookAt_w_as_up(p: Vector4) {
+        this.orientation[0] = sub(p, this.pos).normalize();
+
+        this.orientation[2].set(0, 0, 0, 1);
+        removeComponent(this.orientation[2], this.orientation[0]);
+        this.orientation[2].normalize();
+
+        let theta = this.orientation[1].dot(new Vector4(0, 1, 0, 0));
+        if (theta < 0) {
+            this.orientation[1].set(0, -1, 0, 0);
+        } else {
+            this.orientation[1].set(0, 1, 0, 0);
+        }
+        removeComponent(this.orientation[1], this.orientation[0]);
+        removeComponent(this.orientation[1], this.orientation[2]);
+        this.orientation[1].normalize();
+
         removeComponent(this.orientation[3], this.orientation[0]);
         removeComponent(this.orientation[3], this.orientation[1]);
         removeComponent(this.orientation[3], this.orientation[2]);
