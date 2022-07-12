@@ -477,7 +477,7 @@ class Scene4 {
                 } else {
                     localMaterial = obj.materialSet;
                 }
-
+                let rendered = false;
                 if (e.occludedIntervals) {
 
                     e.occludedIntervals.push(1);
@@ -485,7 +485,7 @@ class Scene4 {
                     let start = 0;
                     let s = obj.G0[e.v_start];
                     let t = obj.G0[e.v_end];
-                    // console.log(e, obj.G0[e.v_start], obj.G0[e.v_end]);
+
                     for (let switchPoint of e.occludedIntervals) {
                         if (switchPoint - start > 1e-5) {
                             let vi = s.clone();
@@ -498,8 +498,10 @@ class Scene4 {
                             let vj3 = current_cam.project(vj);
                             if (occluded) {
                                 scene3.addLine(vi3, vj3, localMaterial.occluded);
+                                rendered = true
                             } else {
                                 scene3.addLine(vi3, vj3, localMaterial.visible);
+                                rendered = true
                             }
                         }
 
@@ -508,6 +510,11 @@ class Scene4 {
                     }
                 } else {
                     scene3.addLine(V[e.v_start], V[e.v_end], localMaterial.visible);
+                    rendered = true;
+                }
+                if (!rendered) {
+                    console.log('rendered false', e.occludedIntervals);
+
                 }
             }
         }
@@ -657,10 +664,11 @@ function computeOcclusion(f: Vector4[], lineSegment: Vector4[], viewpoint: Vecto
 
     const A = new Matrix4().fromArray(A_data);
 
-    if (A.determinant() === 0) {
+    if (Math.abs(A.determinant()) < 1e-7 ) {
         return null;
     }
     A.invert();
+
     // console.log("A=", A, new Vector4(0, 0, 0, 1).applyMatrix4(A));
     return computeOcclusionOnNormalizedGeometry([
         sub(lineSegment[0], offset).applyMatrix4(A),
@@ -668,7 +676,7 @@ function computeOcclusion(f: Vector4[], lineSegment: Vector4[], viewpoint: Vecto
     ])
 }
 
-function getVisibleIntervals(I: Float32Array[]): number[] {
+function getVisibleIntervals(I: Float32Array[]): number[] | undefined {
     const eps = 1e-4;
     I.sort((a, b) => a[0] - b[0]);
     const J = [];
@@ -695,7 +703,7 @@ function getVisibleIntervals(I: Float32Array[]): number[] {
 
         }
     }
-    return J;
+        return J;
 }
 
 
@@ -718,6 +726,10 @@ function getLineIntersection(a0: Vector4, a1: Vector4, b0: Vector4, b1: Vector4)
     ]
     // Cramer's rule, lambda = 1-y
     const lambda = 1 - (G[0]*b[1] - b[0]*G[1]) / (G[0]*G[2] - G[1]*G[1]);
+    if (isNaN(lambda)) {
+        console.log("NaN", a0, a1, b0, b1);
+    }
+
     return lambda;
 }
 
@@ -777,10 +789,14 @@ function computeOcclusionOnNormalizedGeometry(lineSegment: Vector4[]) {
         if (rx === null || ry === null || rz === null) {
             return null;
         } else {
-            return [
+            let ret = [
                 Math.max(rx[0], ry[0], rz[0]),
                 Math.min(rx[1], ry[1], rz[1])
             ];
+            if (ret[0] >= ret[1]) {
+                return null;
+            }
+            return ret;
         }
     }
 
@@ -803,10 +819,14 @@ function computeOcclusionOnNormalizedGeometry(lineSegment: Vector4[]) {
         const lambda0 = getLineIntersection(e_w, pr0, a, b);
         const lambda1 = getLineIntersection(e_w, pr1, a, b);
         //  console.log("B", lineSegment, lambda0, lambda1, min, max);
-        return [
+        let ret = [
             Math.max(min, lambda0),
             Math.min(max, lambda1)
         ];
+        if (isNaN(ret[0]) || isNaN(ret[1])) {
+            console.log("B", lineSegment, lambda0, lambda1, min, max);
+        }
+        return ret
     }
     if (a.w >= 0 && b.w < 0) {
 
@@ -829,10 +849,14 @@ function computeOcclusionOnNormalizedGeometry(lineSegment: Vector4[]) {
         const e_w = new Vector4(0, 0, 0, 1);
         const lambda0 = getLineIntersection(e_w, pr0, a, b);
         const lambda1 = getLineIntersection(e_w, pr1, a, b);
-        return [
+        let ret = [
             Math.max(min, lambda0),
             Math.min(max, lambda1)
         ];
+        if (isNaN(ret[0]) || isNaN(ret[1])) {
+            console.log("C", lineSegment, lambda0, lambda1, min, max, range);
+        }
+        return ret
     }
     if (a.w < 0 && b.w < 0) {
         const min = 0;
@@ -854,10 +878,14 @@ function computeOcclusionOnNormalizedGeometry(lineSegment: Vector4[]) {
         const lambda0 = getLineIntersection(e_w, pr0, a, b);
         const lambda1 = getLineIntersection(e_w, pr1, a, b);
         //  console.log("D", lambda0, lambda1, pa, pb, range);
-        return [
+        let ret = [
             Math.max(min, lambda0),
             Math.min(max, lambda1)
         ];
+        if (isNaN(ret[0]) || isNaN(ret[1])) {
+            console.log("D", lineSegment, lambda0, lambda1, min, max);
+        }
+        return ret
     }
 }
 
