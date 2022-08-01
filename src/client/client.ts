@@ -77,7 +77,8 @@ window.addEventListener('keydown', (e) => {
 
 
 let effect = new StereoEffect( renderer );
-effect.setEyeSeparation(-0.01);
+effect.setEyeSeparation(-0.064);
+effect.setSize(window.innerWidth, window.innerHeight);
 
 var capturer = new CCapture( { format: 'webm', framerate: 48} );
 
@@ -90,7 +91,7 @@ function render() {
         sceneUpdated = false;
     } else {
         // renderer.render(scene, camera);
-        renderer.render(scene, camera)
+        effect.render(scene, camera)
     }
     capturer.capture(renderer.domElement);
 }
@@ -118,11 +119,18 @@ window.addEventListener('keydown', (e) => {
 // const animation_1 = new Ep2PreviewAnimation(8, .1);
 // window.setInterval(render, 1000/15);
 
+let save_animation = false;
+if (save_animation) {
+    renderer.setSize(3840, 2160);
+}
+// renderer.setSize(1920, 1080);
+
 let render3 = EP2.get3DAnimationHandler(renderer, capturer)
 
-let animation = new EP2.P2(18);
-let render_animation = animation.getCallbackHandler(renderer)//, capturer);
+let animation = new EP2.P1(save_animation?48:18);
+let render_animation = animation.getCallbackHandler(renderer, save_animation?capturer:undefined, effect);
 
 // window.setInterval(animation_1.getCallbackHandler(renderer), 1000/animation_1.frameRate);
 // window.setInterval(render, 24);
-window.setInterval(render_animation, 1000/18);
+window.setInterval(render_animation, save_animation?(1000/48):(1000/18));
+// window.setInterval(render3, 1000/48);

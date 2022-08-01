@@ -1,6 +1,7 @@
 import * as e from 'express';
 import * as THREE from 'three'
 import { Camera, Renderer, Vector3, Vector4, WebGLRenderer } from 'three'
+import { StereoEffect } from 'three/examples/jsm/effects/StereoEffect';
 import { LineMaterial } from 'three/examples/jsm/lines/LineMaterial';
 import { lerp } from 'three/src/math/MathUtils';
 import { Camera4, CameraQueue,  getLineMaterial,  MaterialSet,  Scene3WithMemoryTracker, Scene4 } from './math/core'
@@ -109,14 +110,19 @@ abstract class BaseAnimation {
 
     abstract prepareFrame(): void;
 
-    getCallbackHandler = (renderer: WebGLRenderer, capturer?: CCapture) => {
+    getCallbackHandler = (renderer: WebGLRenderer, capturer?: CCapture, effect?: StereoEffect) => {
         return () => {
             this.prepareFrame();
             this.scene3.clearScene();
             this.camQueue.pushCamera(this.cam4);
             this.scene4.render(this.scene3, this.camQueue);
-            renderer.render(this.scene3, this.cam3);
-            if (capturer) {
+            if (effect) {
+                effect.render(this.scene3, this.cam3);
+            }
+            else {
+                renderer.render(this.scene3, this.cam3);
+
+            }    if (capturer) {
                 if (!this.animation_started) {
                     capturer.start();
                     this.animation_started = true;

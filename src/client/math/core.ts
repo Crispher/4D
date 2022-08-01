@@ -213,6 +213,7 @@ class Camera4 {
     readonly f: number;
     readonly orientation: Vector4[];
     private center: Vector4;
+    private windowSize: number;
 
     private updateCenter() {
         this.center = add(this.pos, multiplyScalar(this.orientation[0], this.f));
@@ -223,6 +224,7 @@ class Camera4 {
         this.f = focalLength;
         this.orientation = orientation;
         this.center = add(this.pos, multiplyScalar(this.orientation[0], this.f));
+        this.windowSize = 1;
     }
 
     project(p: Vector4): Vector3 {
@@ -234,7 +236,7 @@ class Camera4 {
             focalPlaneRelPos.dot(this.orientation[1]),
             focalPlaneRelPos.dot(this.orientation[2]),
             focalPlaneRelPos.dot(this.orientation[3])
-        )
+        ).multiplyScalar(this.windowSize);
     }
 
     move(i: number, ds: number) {
@@ -326,6 +328,7 @@ class Camera4 {
     }
 
     getFrame(size: number, opacity: number, eps: number, linewidth: number[]): Object4[] {
+        size = size / this.windowSize;
         const dA = multiplyScalar(this.orientation[1], size*(1-eps));
         const dB = multiplyScalar(this.orientation[2], size*(1-eps));
         const dC = multiplyScalar(this.orientation[3], size*(1-eps));
@@ -745,6 +748,9 @@ function computeOcclusionOnNormalizedGeometry(lineSegment: Vector4[]) {
 
     // console.log("normalized input", lineSegment)
     const project = (p: Vector4) => {
+        if (Math.abs(1-p.w) < 1e-7) {
+            return p.clone()
+        }
         const s=1 / (1-p.w);
         return new Vector4(p.x*s, p.y*s, p.z*s, 0);
     }
@@ -784,7 +790,11 @@ function computeOcclusionOnNormalizedGeometry(lineSegment: Vector4[]) {
         const rx = getRange(a.x, b.x);
         const ry = getRange(a.y, b.y);
         const rz = getRange(a.z, b.z);
-        // console.log(rx, ry, rz);
+        if (ry) {
+            if (isNaN(ry[1])) {
+                console.log("Ry NaN", a, b);
+            }
+        }
 
         if (rx === null || ry === null || rz === null) {
             return null;
@@ -824,7 +834,7 @@ function computeOcclusionOnNormalizedGeometry(lineSegment: Vector4[]) {
             Math.min(max, lambda1)
         ];
         if (isNaN(ret[0]) || isNaN(ret[1])) {
-            console.log("B", lineSegment, lambda0, lambda1, min, max);
+            console.log("B", lineSegment, lambda0, lambda1, min, max, range);
         }
         return ret
     }
