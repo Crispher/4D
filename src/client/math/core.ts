@@ -245,7 +245,7 @@ class Camera4 {
             let d = this.pos.length();
             this.pos.add(multiplyScalar(this.orientation[i], ds));
             this.pos.normalize().multiplyScalar(d);
-            this.lookAt(new Vector4(0, 0, 0, 0));
+            this.lookAt(new Vector4(1,1,1,2));
         }
     }
 
@@ -310,7 +310,7 @@ class Camera4 {
             return;
         }
 
-        const s = 0.02;
+        const s = 1;
         const speed = keyMap.status === MotionStatus.POSITIVE ? s: -s;
         this.move(keyMap.axis, speed, true);
 

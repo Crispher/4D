@@ -163,7 +163,7 @@ class Tesseract extends Object4 {
         this.materialSet = INVISIBLE;
         let colors = [0xff2020, 0xffff00, 0x7B68EE, 0x00ffff, 0x80FF00, 0x003399ff, 0xffffff, 0xff7f00];
         for (let i = 0; i < 8; i++) {
-            this.generateFacetBorder(i, 0.05, getLineMaterial(colors[i], faceBorderLinewidth, showHidden));
+            this.generateFacetBorder(i, 0.03, getLineMaterial(colors[i], faceBorderLinewidth, showHidden));
         }
         return this
     }

@@ -71,6 +71,26 @@
                 font-size: 16px;
                 color: coral;
                 margin: 0;
+                margin-top: 30px;
+            }
+            .card {
+                text-align: center;
+                background-color: #000;
+                font-size: 16px;
+                font-style: bold;
+                border-radius: 3px;
+                padding: 10px;
+                width: 80%;
+                border : 1px solid green;
+                margin: 10px;
+            }
+            .correct {
+                border: 1px solid white;
+                background-color: #0a0;
+            }
+            .wrong {
+                border: 1px solid white;
+                background-color: #800;
             }
             #viewport {
                 position: absolute;
@@ -80,10 +100,10 @@
                 bottom: 0;
             }
 
-                #viewport #info {
-                    text-shadow: 1px 1px 0 rgba(0,0,0,0.25);
-                    pointer-events: none;
-                }
+            #viewport #info {
+                text-shadow: 1px 1px 0 rgba(0,0,0,0.25);
+                pointer-events: none;
+            }
             </style>
     </head>
 
@@ -92,12 +112,24 @@
         <div id="container"></div>
         <div id="title">
 
-                <h1>四维空间视窗</h1>
+                <h1>这张三维照片中共有多少个超立方体？</h1>
+                <p>  </p>
+                <h2>难度</h2>
+                <p style="margin-left: 20px;"><a href=".?p=0.05">简单</a> ｜ <a href=".?p=0.1">中等</a> ｜ <a href=".?p=0.2">困难</a> ｜ <a href=".?p=0.3">极难</a>
+                </p>
+                <p>  </p>
+                <h2>选择你的答案 ｜ <a href=".">刷新关卡</a></h2>
+                <div class="card" id="a"></div>
+                <div class="card" id="b"></div>
+                <div class="card" id="c"></div>
+                <div class="card" id="d"></div>
 
-                <p>这是四维空间的四维相机拍下的一张三维照片，在这个演示中，你可以移动这个四维相机，从不同的角度观察你面前的超立方体和超平面！</p>
-
-                <p>如果你还没有看过我的视频，请先观看视频 <a href="https://www.bilibili.com/video/BV1Z34y1L7LF">bilibili: 四维空间之旅 Ep.1</a> 视频里包含了一些必要的概念讲解。</p>
-
+                <h2>这是什么？</h2>
+                <ul>
+                <li><a href="https://www.bilibili.com/video/BV1Z34y1L7LF/?spm_id_from=333.788&vd_source=3f3dd3bd615b012e95bf22db024e474c"> 这个视频</a>详细解释了这个游戏用到的四维空间可视化方法。
+                </li>
+                <li><a href="/demo1">这个演示</a>只包含一个超立方体，可以帮助你理解超立方体的基本特点。</li>
+            </ul>
                 <h2>操作</h2>
                 <ul>
                     <li>Q/A键：将相机向蓝/绿方向移动</li>
@@ -106,21 +138,12 @@
                     <li>鼠标：转动/缩放三维照片（四维相机位置不变）</li>
                 </ul>
 
-                <h2>注意</h2>
-                <p>由于内存管理原因，偶尔会出现页面崩溃，此时刷新页面即可。</p>
-
-                <h2>一些简单的新手任务</h2>
-                <p>如果你已经理解了四维相机，超平面，超立方体等基本概念，可以尝试完成以下任务：</p>
-                <ul>
-                    <li>模仿《<a href="https://www.bilibili.com/video/BV1Z34y1L7LF">bilibili: 四维空间之旅 Ep.1</a>》中出现的移动。</li>
-                    <li>超立方体的八个侧面都是什么颜色的？</li>
-                    <li>八个侧面中，四组两两相对的侧面是哪四对？</li>
-                    <li>对于每一个侧面，移动四维相机到该侧面的正面（此时画面中只有这一个侧面）。</li>
-                    <li>找到一个四维相机的位置，可以同时看到四个侧面。</li>
-                </ul>
-
                 <h2>更多</h2>
-                <p>请关注我的b站账号 <a href="https://space.bilibili.com/613069855">yugu233</a>。更多有趣的视频和演示正在制作中。代码也会在之后公开。</p>
+                <ul>
+                    <li><a href="https://www.bilibili.com/video/BV1Z34y1L7LF/?spm_id_from=333.788&vd_source=3f3dd3bd615b012e95bf22db024e474c">四维空间系列视频</a>（更新中）</li>
+                    <li><a href="https://github.com/Crispher/4D">Github</a>: 用来渲染视频动画这个游戏的源代码。</li>
+                    <li> 关注我的 B 站账号 <a href="https://space.bilibili.com/613069855">bilibili: yugu233</a> </li>
+
         </div>
 
         <script type="module" src="bundle.js"></script>
