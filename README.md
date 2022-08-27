@@ -20,13 +20,17 @@ Both server and client projects are written in TypeScript.
 
 
 ## Installing
+0. 安装NodeJS和npm
+https://nodejs.org/en/download/
+https://docs.npmjs.com/downloading-and-installing-node-js-and-npm
 
 1. Clone this Repository
 
 2. CD into folder
 
 ```bash
-cd Three.js-TypeScript-Boilerplate
+cd 4D
+git checkout master
 ```
 
 3. Install TypeScript
@@ -49,10 +53,6 @@ npm run dev
 
 6. Visit [http://127.0.0.1:8080](http://127.0.0.1:8080)
 
-You should see a rotating green wireframe cube, and be able to rotate it further with your mouse.
 
 7. Edit project in VSCode
-
-```bash
-code .
-```
+可以从src/client/client.ts开始阅读代码。
