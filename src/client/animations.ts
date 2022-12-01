@@ -74,7 +74,8 @@ abstract class BaseAnimation {
     constructor(cam4: Camera4, camQueue: CameraQueue, frameRate: number) {
         this.scene4 = new Scene4([]);
         this.scene3 = new Scene3WithMemoryTracker();
-        this.cam3 = new THREE.PerspectiveCamera(50, window.innerWidth / window.innerHeight, 0.2, 1000);
+        // this.cam3 = new THREE.PerspectiveCamera(12, 16/9, 0.2, 1000); // for rendering func plots
+        this.cam3 = new THREE.PerspectiveCamera(20, 16/9, 0.2, 1000); // for 2 plane
 
         this.cam4 = cam4;
         this.camQueue = camQueue;

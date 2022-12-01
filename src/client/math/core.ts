@@ -3,7 +3,8 @@ import {
     Vector4,
     Scene,
     Matrix4,
-    Plane
+    Plane,
+    Color
 } from 'three'
 import { LineMaterial } from 'three/examples/jsm/lines/LineMaterial';
 import { LineGeometry } from 'three/examples/jsm/lines/LineGeometry';
@@ -62,16 +63,20 @@ function getFrameMaterial(color: number, linewidth: number) {
 class MaterialSet {
     visible: Material | undefined;
     occluded: Material | undefined;
+    local: Material | undefined;
+    isDirectional: boolean = false;
 
-    constructor(visible?: Material, occluded?: Material) {
+    constructor(visible?: Material, occluded?: Material, isDirectional?: boolean) {
         this.visible = visible;
         this.occluded = occluded;
+        this.isDirectional = isDirectional || false;
     }
 
     clone() {
         return new MaterialSet(
             this.visible? this.visible.clone() : undefined,
-            this.occluded? this.occluded.clone() : undefined
+            this.occluded? this.occluded.clone() : undefined,
+            this.isDirectional
         );
     }
 
@@ -114,6 +119,7 @@ interface Facet {
 class Object4 {
     name: string;
     hidden: boolean = false;
+    public G0_projected: Vector3[]; // projected vertices
     readonly G0: Vector4[];
     readonly G1: Edge[];
     readonly G2: Int32Array[];
@@ -127,6 +133,7 @@ class Object4 {
         this.G1 = G1;
         this.G2 = G2;
         this.G3 = G3;
+        this.G0_projected = []
         this.materialSet = getLineMaterial(0xffffff, 1, false);
     }
 
@@ -154,6 +161,13 @@ class Object4 {
 
     getVerticesPos(...v: number[]) {
         return v.map(i => this.G0[i]);
+    }
+
+    scale(s: number) {
+        for (let v of this.G0) {
+            v.multiplyScalar(s);
+        }
+        return this;
     }
 
     computeOcclusion(viewPoint: Vector4, a: Vector4, b: Vector4) {
@@ -227,16 +241,25 @@ class Camera4 {
         this.windowSize = 1;
     }
 
-    project(p: Vector4): Vector3 {
+    project(p: Vector4, projected?: Vector3): Vector3 {
         const relPos = sub(p, this.pos);
         const d = relPos.dot(this.orientation[0]);
         const focalPlanePos = add(this.pos, multiplyScalar(relPos, this.f/d));
         const focalPlaneRelPos = sub(focalPlanePos, this.center);
-        return new Vector3(
-            focalPlaneRelPos.dot(this.orientation[1]),
-            focalPlaneRelPos.dot(this.orientation[2]),
-            focalPlaneRelPos.dot(this.orientation[3])
-        ).multiplyScalar(this.windowSize);
+        if (projected) {
+            projected.set(
+                focalPlaneRelPos.dot(this.orientation[1]),
+                focalPlaneRelPos.dot(this.orientation[2]),
+                focalPlaneRelPos.dot(this.orientation[3])
+            ).multiplyScalar(this.windowSize);
+            return projected;
+        } else {
+            return new Vector3(
+                focalPlaneRelPos.dot(this.orientation[1]),
+                focalPlaneRelPos.dot(this.orientation[2]),
+                focalPlaneRelPos.dot(this.orientation[3])
+            ).multiplyScalar(this.windowSize);
+        }
     }
 
     move(i: number, ds: number) {
@@ -269,18 +292,22 @@ class Camera4 {
         this.updateCenter();
     }
 
-    lookAt_w_as_up(p: Vector4) {
+    lookAt_w_as_up(p: Vector4, ref?: Vector4) {
         this.orientation[0] = sub(p, this.pos).normalize();
 
         this.orientation[2].set(0, 0, 0, 1);
         removeComponent(this.orientation[2], this.orientation[0]);
         this.orientation[2].normalize();
 
-        let theta = this.orientation[1].dot(new Vector4(0, 1, 0, 0));
-        if (theta < 0) {
-            this.orientation[1].set(0, -1, 0, 0);
+        if (ref) {
+            this.orientation[1].copy(ref);
         } else {
-            this.orientation[1].set(0, 1, 0, 0);
+            let theta = this.orientation[1].dot(new Vector4(0, 1, 0, 0));
+            if (theta < 0) {
+                this.orientation[1].set(0, -1, 0, 0);
+            } else {
+                this.orientation[1].set(0, 1, 0, 0);
+            }
         }
         removeComponent(this.orientation[1], this.orientation[0]);
         removeComponent(this.orientation[1], this.orientation[2]);
@@ -293,19 +320,20 @@ class Camera4 {
         this.updateCenter();
     }
 
-    keyboardEventHandler(event: KeyboardEvent) {
+    keyboardEventHandler(event: KeyboardEvent, accelerate: number = 1, tilt_accelerate: number = 1) {
         const keyCode = event.which;
         const keyMap = getKeyMap(keyCode);
+        console.log(keyMap, keyCode)
         if (keyMap === undefined) {
             return;
         }
 
         if (event.ctrlKey) {
-            const s = 0.01;
+            const s = 0.01 * tilt_accelerate;
             const speed = keyMap.status === MotionStatus.POSITIVE ? s: -s;
             this.tilt(keyMap.axis, speed);
         } else {
-            const s = 0.02;
+            const s = 0.02 * accelerate;
             const speed = keyMap.status === MotionStatus.POSITIVE ? s: -s;
             this.move(keyMap.axis, speed);
         }
@@ -464,23 +492,39 @@ class Scene4 {
         let current_cam = camera.getPastCamera(0);
 
         // render objects
-        this.clearOcclusion();
-        this.computeOcclusion(current_cam);
+        // this.clearOcclusion();
+        // this.computeOcclusion(current_cam);
         for (const obj of this.objects) {
             if (obj.hidden) {
                 continue;
             }
 
-            let V = obj.G0.map(p => current_cam.project(p));
+            if (obj.G0_projected.length != obj.G0.length) {
+                console.log('allocate G0_projected');
+
+                obj.G0_projected = obj.G0.map(p => current_cam.project(p));
+            } else {
+                for (let i = 0; i < obj.G0.length; i++) {
+                    obj.G0_projected[i] = current_cam.project(obj.G0[i], obj.G0_projected[i]);
+                }
+            }
+
+            let V = obj.G0_projected;
+
 
             for (const e of obj.G1) {
                 let localMaterial;
+
+                if (obj.materialSet.isDirectional && !e.materialSet) {
+                    e.materialSet = obj.materialSet.clone();
+                }
+
                 if (e.materialSet) {
                     localMaterial = e.materialSet;
                 } else {
                     localMaterial = obj.materialSet;
                 }
-                let rendered = false;
+
                 if (e.occludedIntervals) {
 
                     e.occludedIntervals.push(1);
@@ -501,10 +545,15 @@ class Scene4 {
                             let vj3 = current_cam.project(vj);
                             if (occluded) {
                                 scene3.addLine(vi3, vj3, localMaterial.occluded);
-                                rendered = true
                             } else {
-                                scene3.addLine(vi3, vj3, localMaterial.visible);
-                                rendered = true
+                                // scene3.addLine(vi3, vj3, localMaterial.visible);
+                                if (localMaterial.isDirectional) {
+                                    let mat = this.getDirectionalLighting(obj.G0[e.v_start], obj.G0[e.v_end], localMaterial!);
+
+                                    scene3.addLine(V[e.v_start], V[e.v_end], mat);
+                                } else {
+                                    scene3.addLine(V[e.v_start], V[e.v_end], localMaterial.visible);
+                                }
                             }
                         }
 
@@ -512,31 +561,35 @@ class Scene4 {
                         occluded = !occluded;
                     }
                 } else {
-                    scene3.addLine(V[e.v_start], V[e.v_end], localMaterial.visible);
-                    rendered = true;
-                }
-                if (!rendered) {
-                    console.log('rendered false', e.occludedIntervals);
+                    if (localMaterial.isDirectional) {
+                        let mat = this.getDirectionalLighting(obj.G0[e.v_start], obj.G0[e.v_end], localMaterial!);
 
+                        scene3.addLine(V[e.v_start], V[e.v_end], mat);
+                    } else {
+                        scene3.addLine(V[e.v_start], V[e.v_end], localMaterial.visible);
+                    }
                 }
             }
         }
 
         // render camera
 
-        for (let i = 0; i < camera.totalFrames; i++) {
-            if (!camera.isActiveFrame(i)) {
-                continue;
-            }
-            let cam_i = camera.getPastCamera(i);
-            if (!cam_i) {
-                continue;
-            }
-            let opacity = camera.getOpacity(i)
-            for (const obj of cam_i.getFrame(0.5, opacity, camera.frameGap, camera.frameLinewidth)) {
-                let V = obj.G0.map(p => current_cam.project(p));
-                for (const e of obj.G1) {
-                    scene3.addLine(V[e.v_start], V[e.v_end], obj.materialSet.visible);
+
+        if (true) {
+            for (let i = 0; i < camera.totalFrames; i++) {
+                if (!camera.isActiveFrame(i)) {
+                    continue;
+                }
+                let cam_i = camera.getPastCamera(i);
+                if (!cam_i) {
+                    continue;
+                }
+                let opacity = camera.getOpacity(i)
+                for (const obj of cam_i.getFrame(0.5, opacity, camera.frameGap, camera.frameLinewidth)) {
+                    let V = obj.G0.map(p => current_cam.project(p));
+                    for (const e of obj.G1) {
+                        scene3.addLine(V[e.v_start], V[e.v_end], obj.materialSet.visible);
+                    }
                 }
             }
         }
@@ -579,6 +632,67 @@ class Scene4 {
             }
         }
     }
+
+    rgbToNumber(r: number, g: number, b: number) {
+        let base = 0.2
+        r = Math.floor(Math.abs(r) * 255 * (1-base)) + 255 * base;
+        g = Math.floor(Math.abs(g) * 255 * (1-base)) + 255 * base;
+        b = Math.floor(Math.abs(b) * 255 * (1-base)) + 255 * base;
+        return (r << 16) + (g << 8) + b;
+    }
+
+    hsvToRgb(h: number, s: number, v: number) {
+        let r, g, b, i, f, p, q, t;
+        r = g = b = 0;
+
+        i = Math.floor(h * 6);
+        f = h * 6 - i;
+        p = v * (1 - s);
+        q = v * (1 - f * s);
+        t = v * (1 - (1 - f) * s);
+        switch (i % 6) {
+            case 0: r = v, g = t, b = p; break;
+            case 1: r = q, g = v, b = p; break;
+            case 2: r = p, g = v, b = t; break;
+            case 3: r = p, g = q, b = v; break;
+            case 4: r = t, g = p, b = v; break;
+            case 5: r = v, g = p, b = q; break;
+        }
+        return this.rgbToNumber(r, g, b);
+    }
+
+    getDirectionalLighting(a: Vector4, b: Vector4, localMaterial: MaterialSet) : LineMaterial {
+        let n = b.clone().sub(a).normalize();
+        let real = n.x * n.x + n.w * n.w;
+        let input = n.x * n.x + n.y * n.y;
+
+        let dist = Math.max(a.lengthSq(), b.lengthSq());
+        let alpha = 1;
+        const cap = 20;
+        if (dist > cap && localMaterial.visible!.linewidth < 2 * 0.001) {
+            alpha = Math.pow(cap / dist, 2);
+        }
+
+        let color = this.hsvToRgb(0.6 * input, 0.8, 1);
+
+        let dash = 0.005;
+        // let gap = (1-real) * dash * 3;
+        let gap = 0;
+
+        let linewidth = localMaterial.visible!.linewidth;
+
+        if (localMaterial.local) {
+            localMaterial.local.linewidth = linewidth;
+            localMaterial.local.color = new Color(color);
+            localMaterial.local.dashSize = dash;
+            localMaterial.local.gapSize = gap;
+            localMaterial.local.opacity = alpha;
+            return localMaterial.local;
+        } else {
+            localMaterial.local = new LineMaterial({color: color, linewidth: linewidth, dashed: true, dashSize: dash, gapSize: gap, transparent: true, opacity: alpha});
+        }
+        return localMaterial.local;
+    }
 }
 
 
@@ -589,7 +703,7 @@ class Scene3WithMemoryTracker extends Scene {
         super();
     }
 
-    addLineGeometry(geo: LineGeometry, material: Material) {
+    addLineGeometry(geo: LineGeometry, material: Material | undefined) {
         this.geometries.push(geo);
         const line = new Line2(geo, material);
         this.lines.push(line);
@@ -631,16 +745,22 @@ enum MotionStatus {
 function getKeyMap(keyCode: number) {
     switch(keyCode) {
         case 49: // 1
+        case 97: // numpad 1
             return { axis: 1, status: MotionStatus.NEGATIVE};
         case 52: // 4
+        case 100: // numpad 4
             return { axis: 1, status: MotionStatus.POSITIVE}
         case 50: // 2
+        case 98: // numpad 2
             return { axis: 3, status: MotionStatus.NEGATIVE};
         case 53: // 5
+        case 101: // numpad 5
             return { axis: 3, status: MotionStatus.POSITIVE};
         case 51: // 3
+        case 99: // numpad 3
             return { axis: 2, status: MotionStatus.NEGATIVE};
         case 54: // 6
+        case 102: // numpad 6
             return { axis: 2, status: MotionStatus.POSITIVE}
     }
     return undefined;

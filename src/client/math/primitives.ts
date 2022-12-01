@@ -1,7 +1,7 @@
 import { Vector4 } from "three";
 import { LineMaterial } from 'three/examples/jsm/lines/LineMaterial'
 import { Object4, getLineMaterial, MaterialSet } from "./core";
-
+import {complex, exp} from 'mathjs';
 
 class Grid4 extends Object4 {
     public dims: number[];
@@ -219,6 +219,136 @@ class ParallelepipedCell extends Object4 {
 }
 
 
+class TwoManifoldMesh extends Object4 {
+    constructor(name: string, u_range: number[], v_range: number[], f: (u: number, v: number)=>Vector4) {
+        super(name);
+        for (let u of u_range) {
+            for (let i = 0; i < v_range.length - 1; i++) {
+                let v = v_range[i];
+                let v_next = v_range[i + 1];
+                this.G0.push(f(u, v), f(u, v_next));
+                this.G1.push({v_start: this.G0.length - 2, v_end: this.G0.length - 1});
+            }
+        }
+
+        for (let v of v_range) {
+            for (let i = 0; i < u_range.length - 1; i++) {
+                let u = u_range[i];
+                let u_next = u_range[i + 1];
+                // this.G0.push(f(u, v), f(u_next, v));
+                // this.G1.push({v_start: this.G0.length - 2, v_end: this.G0.length - 1});
+            }
+        }
+        this.materialSet.isDirectional = true
+
+    }
+}
+
+export class OneManifold extends Object4 {
+    constructor(name: string, u_interval: number[], u_division: number, f: (u: number)=>Vector4) {
+        super(name);
+        let du = (u_interval[1] - u_interval[0]) / u_division;
+        for (let i = 0; i <= u_division; i++) {
+            let u = u_interval[0] + i * du;
+            this.G0.push(f(u));
+        }
+        for (let i = 0; i < u_division; i++) {
+            this.G1.push({v_start: i, v_end: i + 1});
+        }
+        this.materialSet.withLinewidth(5)
+        this.materialSet.isDirectional = true
+    }
+}
+
+export class TwoManifoldMesh_2 extends Object4 {
+    constructor(name: string,
+        u_interval: number[],
+        v_interval: number[],
+        u_division: number,
+        v_division: number,
+        u_subdivision: number,
+        v_subdivision: number,
+        f: (u: number, v: number)=>Vector4,
+        linewidth?: number) {
+        super(name);
+
+
+        let du = (u_interval[1] - u_interval[0]) / u_division;
+        let dv = (v_interval[1] - v_interval[0]) / v_division;
+
+        let ddu = du / u_subdivision;
+        let ddv = dv / v_subdivision;
+
+        const thres = 15;
+        // fix u, draw curves
+        for (let i = 0; i <= u_division; i++) {
+            let u = u_interval[0] + i * du;
+            for (let j = 0; j < v_division * v_subdivision; j++) {
+                let v = v_interval[0] + j * ddv;
+                let v_next = v_interval[0] + (j + 1) * ddv;
+                let p1 = f(u, v);
+                let p2 = f(u, v_next);
+                if (p1.length() < thres && p2.length() < thres) {
+                    this.G0.push(f(u, v), f(u, v_next));
+                    this.G1.push({v_start: this.G0.length - 2, v_end: this.G0.length - 1});
+                }
+            }
+        }
+
+        // fix v, draw curves
+        for (let i = 0; i <= v_division; i++) {
+            let v = v_interval[0] + i * dv;
+            for (let j = 0; j < u_division * u_subdivision; j++) {
+                let u = u_interval[0] + j * ddu;
+                let u_next = u_interval[0] + (j + 1) * ddu;
+                let p1 = f(u, v);
+                let p2 = f(u_next, v);
+                if (p1.length() < thres && p2.length() < thres) {
+                    this.G0.push(f(u, v), f(u_next, v));
+                    this.G1.push({v_start: this.G0.length - 2, v_end: this.G0.length - 1});
+                }
+            }
+        }
+        // this.materialSet.isDirectional = true
+
+        if (linewidth) {
+            // this.materialSet.withLinewidth(linewidth)
+        }
+    }
+}
+
+let getRange = (N: number, r: number=1) => {
+    let range = [];
+    for (let i = 0; i < N*r; i++) {
+        range.push(i / N);
+    }
+    return range;
+}
+class KleinBottle extends TwoManifoldMesh {
+    constructor(name: string, N: number, R: number, P: number, eps: number = 0.1) {
+        super(name, getRange(N, 0.4), getRange(N), (u, v) => {
+            return new Vector4(
+                R * (Math.cos(u / 2) * Math.cos(v) - Math.sin(u / 2) * Math.sin(2 * v)),
+                R * (Math.cos(u / 2) * Math.sin(v) + Math.sin(u / 2) * Math.cos(2 * v)),
+                P * Math.cos(u) * (1 + eps * Math.sin(v)),
+                P * Math.sin(u) * (1 + eps * Math.sin(v)) + 2
+            )
+        });
+    }
+}
+
+
+class ComplexFunctionPlot extends TwoManifoldMesh {
+    constructor(name: string, N: number, range: number, func: (t: any) => any) {
+        super(name, getRange(N), getRange(N), (u, v) => {
+            let x = (2 * u - 1) * range;
+            let y = (2 * v - 1) * range;
+            let z = func(complex(x, y));
+            return new Vector4(x, y, z.re, z.im);
+        });
+    }
+}
+
 
 const INVISIBLE = new MaterialSet()
 let w = 1.5;
@@ -233,6 +363,9 @@ export {
     Tesseract,
     LineObject,
     ParallelepipedCell,
+    TwoManifoldMesh,
+    KleinBottle,
+    ComplexFunctionPlot,
     WHITE,
     RED,
     GREEN,
