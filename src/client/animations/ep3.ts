@@ -71,64 +71,10 @@ export class FuncPlot extends BaseAnimation {
         ); // 画复函数图像
 
         this.scene4.objects.push(
-            new TwoManifoldMesh_2(
-                'x-re-axis',
-                [-12, 12],
-                [0, 0],
-                1,
-                1,
-                1,
-                1,
-                (u: number, v: number): Vector4 => {
-                    return new Vector4(u, 0, 0, 0);
-                },
-                3
-            ).scale(scale)
-        );
-        this.scene4.objects.push(
-            new TwoManifoldMesh_2(
-                'x-re-axis',
-                [0, 0],
-                [-12, 12],
-                1,
-                1,
-                1,
-                1,
-                (u: number, v: number): Vector4 => {
-                    return new Vector4(0, v, 0, 0);
-                },
-                3
-            ).scale(scale)
-        );
-        this.scene4.objects.push(
-            new TwoManifoldMesh_2(
-                'x-re-axis',
-                [0, 0],
-                [-12, 12],
-                1,
-                1,
-                1,
-                1,
-                (u: number, v: number): Vector4 => {
-                    return new Vector4(0, 0, v, 0);
-                },
-                3
-            ).scale(scale)
-        );
-        this.scene4.objects.push(
-            new TwoManifoldMesh_2(
-                'x-re-axis',
-                [0, 0],
-                [-12, 12],
-                1,
-                1,
-                1,
-                1,
-                (u: number, v: number): Vector4 => {
-                    return new Vector4(0, 0, 0, v);
-                },
-                3
-            ).scale(scale)
+            new OneManifold('x', [-12, 12], 1, u => new Vector4(u, 0, 0, 0)).scale(scale),
+            new OneManifold('y', [-12, 12], 1, u => new Vector4(0, u, 0, 0)).scale(scale),
+            new OneManifold('z', [-12, 12], 1, u => new Vector4(0, 0, u, 0)).scale(scale),
+            new OneManifold('w', [-12, 12], 1, u => new Vector4(0, 0, 0, u)).scale(scale)
         );
     }
 
@@ -252,64 +198,10 @@ export class FuncPlot_sin extends BaseAnimation {
         ); // 画复函数图像
 
         this.scene4.objects.push(
-            new TwoManifoldMesh_2(
-                'x-re-axis',
-                [-12, 12],
-                [0, 0],
-                1,
-                1,
-                1,
-                1,
-                (u: number, v: number): Vector4 => {
-                    return new Vector4(u, 0, 0, 0);
-                },
-                3
-            ).scale(scale)
-        );
-        this.scene4.objects.push(
-            new TwoManifoldMesh_2(
-                'x-re-axis',
-                [0, 0],
-                [-12, 12],
-                1,
-                1,
-                1,
-                1,
-                (u: number, v: number): Vector4 => {
-                    return new Vector4(0, v, 0, 0);
-                },
-                3
-            ).scale(scale)
-        );
-        this.scene4.objects.push(
-            new TwoManifoldMesh_2(
-                'x-re-axis',
-                [0, 0],
-                [-12, 12],
-                1,
-                1,
-                1,
-                1,
-                (u: number, v: number): Vector4 => {
-                    return new Vector4(0, 0, v, 0);
-                },
-                3
-            ).scale(scale)
-        );
-        this.scene4.objects.push(
-            new TwoManifoldMesh_2(
-                'x-re-axis',
-                [0, 0],
-                [-12, 12],
-                1,
-                1,
-                1,
-                1,
-                (u: number, v: number): Vector4 => {
-                    return new Vector4(0, 0, 0, v);
-                },
-                3
-            ).scale(scale)
+            new OneManifold('x', [-12, 12], 1, u => new Vector4(u, 0, 0, 0)).scale(scale),
+            new OneManifold('y', [-12, 12], 1, u => new Vector4(0, u, 0, 0)).scale(scale),
+            new OneManifold('z', [-12, 12], 1, u => new Vector4(0, 0, u, 0)).scale(scale),
+            new OneManifold('w', [-12, 12], 1, u => new Vector4(0, 0, 0, u)).scale(scale)
         );
     }
 
@@ -433,64 +325,10 @@ export class FuncPlot_tan extends BaseAnimation {
         ); // 画复函数图像
 
         this.scene4.objects.push(
-            new TwoManifoldMesh_2(
-                'x-re-axis',
-                [-12, 12],
-                [0, 0],
-                1,
-                1,
-                1,
-                1,
-                (u: number, v: number): Vector4 => {
-                    return new Vector4(u, 0, 0, 0);
-                },
-                3
-            ).scale(scale)
-        );
-        this.scene4.objects.push(
-            new TwoManifoldMesh_2(
-                'x-re-axis',
-                [0, 0],
-                [-12, 12],
-                1,
-                1,
-                1,
-                1,
-                (u: number, v: number): Vector4 => {
-                    return new Vector4(0, v, 0, 0);
-                },
-                3
-            ).scale(scale)
-        );
-        this.scene4.objects.push(
-            new TwoManifoldMesh_2(
-                'x-re-axis',
-                [0, 0],
-                [-12, 12],
-                1,
-                1,
-                1,
-                1,
-                (u: number, v: number): Vector4 => {
-                    return new Vector4(0, 0, v, 0);
-                },
-                3
-            ).scale(scale)
-        );
-        this.scene4.objects.push(
-            new TwoManifoldMesh_2(
-                'x-re-axis',
-                [0, 0],
-                [-12, 12],
-                1,
-                1,
-                1,
-                1,
-                (u: number, v: number): Vector4 => {
-                    return new Vector4(0, 0, 0, v);
-                },
-                3
-            ).scale(scale)
+            new OneManifold('x', [-12, 12], 1, u => new Vector4(u, 0, 0, 0)).scale(scale),
+            new OneManifold('y', [-12, 12], 1, u => new Vector4(0, u, 0, 0)).scale(scale),
+            new OneManifold('z', [-12, 12], 1, u => new Vector4(0, 0, u, 0)).scale(scale),
+            new OneManifold('w', [-12, 12], 1, u => new Vector4(0, 0, 0, u)).scale(scale)
         );
     }
 

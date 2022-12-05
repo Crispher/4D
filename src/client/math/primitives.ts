@@ -309,10 +309,10 @@ export class TwoManifoldMesh_2 extends Object4 {
                 }
             }
         }
-        // this.materialSet.isDirectional = true
+        this.materialSet.isDirectional = true
 
         if (linewidth) {
-            // this.materialSet.withLinewidth(linewidth)
+            this.materialSet.withLinewidth(linewidth)
         }
     }
 }

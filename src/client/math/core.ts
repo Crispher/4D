@@ -575,7 +575,7 @@ class Scene4 {
         // render camera
 
 
-        if (true) {
+        if (false) {
             for (let i = 0; i < camera.totalFrames; i++) {
                 if (!camera.isActiveFrame(i)) {
                     continue;
@@ -668,7 +668,7 @@ class Scene4 {
 
         let dist = Math.max(a.lengthSq(), b.lengthSq());
         let alpha = 1;
-        const cap = 20;
+        const cap = 6;
         if (dist > cap && localMaterial.visible!.linewidth < 2 * 0.001) {
             alpha = Math.pow(cap / dist, 2);
         }
@@ -676,8 +676,13 @@ class Scene4 {
         let color = this.hsvToRgb(0.6 * input, 0.8, 1);
 
         let dash = 0.005;
-        // let gap = (1-real) * dash * 3;
-        let gap = 0;
+        let gap;
+        if (localMaterial.visible!.linewidth < 2 * 0.001) {
+            gap = 0.0;
+        } else {
+            gap = (1-real) * dash * 3;
+        }
+        // let gap = 0;
 
         let linewidth = localMaterial.visible!.linewidth;
 

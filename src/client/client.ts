@@ -80,7 +80,7 @@ const renderer = new THREE.WebGLRenderer({antialias: true})
 // renderer.setSize(window.innerWidth, window.innerHeight)
 renderer.setSize(3840, 2160)
 // renderer.setSize(1920, 1080)
-renderer.localClippingEnabled = true;
+// renderer.localClippingEnabled = true;
 document.body.appendChild(renderer.domElement)
 
 const controls = new OrbitControls(camera, renderer.domElement)
@@ -96,8 +96,8 @@ window.addEventListener('keydown', (e) => {
 }, false);
 
 // 用来把三维照片渲染成立体画面的渲染器，可以不用管
-// let effect = new StereoEffect( renderer );
-// effect.setEyeSeparation(-0.024);
+let effect = new StereoEffect( renderer );
+// effect.setEyeSeparation(0.06);
 // effect.setSize(window.innerWidth, window.innerHeight);
 
 // 渲染视频用的，可以不用管
@@ -118,8 +118,8 @@ function render() {
 // 试试调低一下帧率，看看能不能流畅一点，后面的数字是每一帧间隔的毫秒数
 
 var frameRate = 48;
-const exp_plot_animation = new EP3.FuncPlot_plane(frameRate);
-let animation_render = exp_plot_animation.getCallbackHandler(renderer, frameRate == 48 ? capturer : undefined, undefined);
+const exp_plot_animation = new EP3.FuncPlot_tan(frameRate);
+let animation_render = exp_plot_animation.getCallbackHandler(renderer, frameRate == 48 ? capturer : undefined, effect);
 
 
 
