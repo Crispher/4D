@@ -1,7 +1,7 @@
 import { BaseAnimation, easeInOutSine, INFTY, pwl, easeInOutCubic } from "../animations";
 import {Camera4, Object4, CameraQueue} from "../math/core";
 import { Vector4 } from "three";
-import { ComplexFunctionPlot, OneManifold, TwoManifoldMesh_2 } from "../math/primitives";
+import { OneManifold, TwoManifoldMesh_2 } from "../math/primitives";
 import { Complex, complex, exp, sin, tan, pow, multiply, sinh } from "mathjs";
 
 let m = (a: number, b: number) => a * 60 + b;

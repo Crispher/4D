@@ -116,6 +116,18 @@ interface Facet {
     vertices: number[] // of length 8
 }
 
+
+interface Vertex {
+    v: Vector4,
+    n: Vector4
+}
+
+
+interface SimplexCell {
+    // edges of a cell are not rendered, unless they are listed in G1
+    vertices: number[] // of length 4
+}
+
 class Object4 {
     name: string;
     hidden: boolean = false;
@@ -124,15 +136,17 @@ class Object4 {
     readonly G1: Edge[];
     readonly G2: Int32Array[];
     readonly G3: Facet[];
+    readonly S3: SimplexCell[];
 
     materialSet: MaterialSet;
 
-    constructor(name: string, G0:Vector4[]=[], G1:Edge[]=[], G2:Int32Array[]=[], G3:Facet[]=[]) {
+    constructor(name: string, G0:Vector4[]=[], G1:Edge[]=[], G2:Int32Array[]=[], G3:Facet[]=[], S3:SimplexCell[]=[]) {
         this.name = name;
         this.G0 = G0;
         this.G1 = G1;
         this.G2 = G2;
         this.G3 = G3;
+        this.S3 = S3;
         this.G0_projected = []
         this.materialSet = getLineMaterial(0xffffff, 1, false);
     }
@@ -179,7 +193,10 @@ class Object4 {
                 viewPoint
             )
             if (occludedRange) {
-                ret.push(new Float32Array(occludedRange));
+                if (occludedRange.length == 2) {
+
+                    ret.push(new Float32Array(occludedRange));
+                }
             }
         }
         return ret;
@@ -492,8 +509,8 @@ class Scene4 {
         let current_cam = camera.getPastCamera(0);
 
         // render objects
-        // this.clearOcclusion();
-        // this.computeOcclusion(current_cam);
+        this.clearOcclusion();
+        this.computeOcclusion(current_cam);
         for (const obj of this.objects) {
             if (obj.hidden) {
                 continue;
@@ -546,14 +563,7 @@ class Scene4 {
                             if (occluded) {
                                 scene3.addLine(vi3, vj3, localMaterial.occluded);
                             } else {
-                                // scene3.addLine(vi3, vj3, localMaterial.visible);
-                                if (localMaterial.isDirectional) {
-                                    let mat = this.getDirectionalLighting(obj.G0[e.v_start], obj.G0[e.v_end], localMaterial!);
-
-                                    scene3.addLine(V[e.v_start], V[e.v_end], mat);
-                                } else {
-                                    scene3.addLine(V[e.v_start], V[e.v_end], localMaterial.visible);
-                                }
+                                scene3.addLine(vi3, vj3, localMaterial.visible);
                             }
                         }
 
@@ -575,7 +585,7 @@ class Scene4 {
         // render camera
 
 
-        if (false) {
+        if (true) {
             for (let i = 0; i < camera.totalFrames; i++) {
                 if (!camera.isActiveFrame(i)) {
                     continue;
@@ -620,6 +630,8 @@ class Scene4 {
             for (const e of obj.G1) {
                 if (e.occludedIntervalSet) {
                     e.occludedIntervals = getVisibleIntervals(e.occludedIntervalSet);
+                    console.log(e.occludedIntervals);
+
                 }
             }
         }
@@ -738,8 +750,6 @@ class Scene3WithMemoryTracker extends Scene {
     }
 }
 
-
-
 enum MotionStatus {
     STILL = 0,
     NEGATIVE,
@@ -772,36 +782,93 @@ function getKeyMap(keyCode: number) {
 }
 
 function computeOcclusion(f: Vector4[], lineSegment: Vector4[], viewpoint: Vector4) {
-    // A * [f0, f1, f2, v] = [e0, e1, e2, e3];
-    // A * [v1, v2]
-    // console.log("Before normalization", f, lineSegment, viewpoint)
+    // todo
+    // return [];
 
-    let offset = f[0]
+    let f_r = [
+        f[0].clone().sub(viewpoint),
+        f[1].clone().sub(viewpoint),
+        f[2].clone().sub(viewpoint),
+        f[3].clone().sub(viewpoint)];
 
-    let f0 = sub(f[1], offset);
-    let f1 = sub(f[2], offset);
-    let f2 = sub(f[3], offset);
-    let view = sub(viewpoint, offset);
+    let l_r = [
+        lineSegment[0].clone().sub(viewpoint),
+        lineSegment[1].clone().sub(viewpoint)
+    ];
 
+    let A = new Matrix4();
+    A.set(
+        f_r[0].x, f_r[1].x, f_r[2].x, f_r[3].x,
+        f_r[0].y, f_r[1].y, f_r[2].y, f_r[3].y,
+        f_r[0].z, f_r[1].z, f_r[2].z, f_r[3].z,
+        f_r[0].w, f_r[1].w, f_r[2].w, f_r[3].w
+    );
 
-    const A_data: number[] = [];
-    A_data.push(...f0.toArray());
-    A_data.push(...f1.toArray());
-    A_data.push(...f2.toArray());
-    A_data.push(...view.toArray());
-
-    const A = new Matrix4().fromArray(A_data);
-
-    if (Math.abs(A.determinant()) < 1e-7 ) {
-        return null;
+    if (Math.abs(A.determinant()) < 1e-6) {
+        return [];
     }
+
     A.invert();
 
-    // console.log("A=", A, new Vector4(0, 0, 0, 1).applyMatrix4(A));
-    return computeOcclusionOnNormalizedGeometry([
-        sub(lineSegment[0], offset).applyMatrix4(A),
-        sub(lineSegment[1], offset).applyMatrix4(A)
-    ])
+    let eps = 1e-4;
+
+    let b_1 = l_r[1].sub(l_r[0]).applyMatrix4(A);
+    let b_0 = l_r[0].applyMatrix4(A).addScalar(-eps);
+
+    // alpha = b_0 + beta * b_1
+
+    let min = 0, max = 1;
+
+    // b_0 + beta * b1 >= eps
+    if (b_1.x > 0) {
+        min = Math.max(min, -b_0.x / b_1.x);
+    } else if (b_1.x < 0) {
+        max = Math.min(max, -b_0.x / b_1.x);
+    } else if (b_0.x < 0) {
+        return [];
+    }
+
+    if (b_1.y > 0) {
+        min = Math.max(min, -b_0.y / b_1.y);
+    } else if (b_1.y < 0) {
+        max = Math.min(max, -b_0.y / b_1.y);
+    } else if (b_0.y < 0) {
+        return [];
+    }
+
+    if (b_1.z > 0) {
+        min = Math.max(min, -b_0.z / b_1.z);
+    } else if (b_1.z < 0) {
+        max = Math.min(max, -b_0.z / b_1.z);
+    } else if (b_0.z < 0) {
+        return [];
+    }
+
+    if (b_1.w > 0) {
+        min = Math.max(min, -b_0.w / b_1.w);
+    } else if (b_1.w < 0) {
+        max = Math.min(max, -b_0.w / b_1.w);
+    } else if (b_0.w < 0) {
+        return [];
+    }
+
+    let  s_0 = b_0.x + b_0.y + b_0.z + b_0.w;
+    let  s_1 = b_1.x + b_1.y + b_1.z + b_1.w;
+
+    // s_0 + beta * s_1 >= 1 + eps
+
+    if (s_1 > 0) {
+        min = Math.max(min, (1 - s_0) / s_1);
+    } else if (s_1 < 0) {
+        max = Math.min(max, (1 - s_0) / s_1);
+    } else if (s_0 < 1) {
+        return [];
+    }
+
+    if (min >= max) {
+        return [];
+    }
+    return [min, max];
 }
 
 function getVisibleIntervals(I: Float32Array[]): number[] | undefined {
@@ -831,198 +898,9 @@ function getVisibleIntervals(I: Float32Array[]): number[] | undefined {
 
         }
     }
-        return J;
+    return J;
 }
 
-
-function getLineIntersection(a0: Vector4, a1: Vector4, b0: Vector4, b1: Vector4) {
-    // returns lambda s.t. b0.lerp(b1, lambda) is along the line a0-a1
-    // a0*x + a1*(1-x) = b0*y + b1*(1-y)
-    // (a0-a1)*x + (b1-b0)y = b1 - a1
-    // [(a0-a1), (b1-b0)] @ [x; y] = [b1-a1]
-    // A@x = b;
-    // A'A@x = A'b;
-    const a0_a1 = sub(a0, a1);
-    const b1_b0 = sub(b1, b0);
-    const b1_a1 = sub(b1, a1);
-
-    const G = [
-        a0_a1.lengthSq(), a0_a1.dot(b1_b0), b1_b0.lengthSq()
-    ]
-    const b = [
-        a0_a1.dot(b1_a1), b1_b0.dot(b1_a1)
-    ]
-    // Cramer's rule, lambda = 1-y
-    const lambda = 1 - (G[0]*b[1] - b[0]*G[1]) / (G[0]*G[2] - G[1]*G[1]);
-    if (isNaN(lambda)) {
-        console.log("NaN", a0, a1, b0, b1);
-    }
-
-    return lambda;
-}
-
-function computeOcclusionOnNormalizedGeometry(lineSegment: Vector4[]) {
-    // assume the facet is the unit cube determined by e1, e2, e3;
-    // and the view point is at e4 (0, 0, 0, 1);
-
-    const a = lineSegment[0];
-    const b = lineSegment[1];
-    if (a.w >= 0 && b.w >= 0) {
-        return null;
-    }
-
-    // console.log("normalized input", lineSegment)
-    const project = (p: Vector4) => {
-        if (Math.abs(1-p.w) < 1e-7) {
-            return p.clone()
-        }
-        const s=1 / (1-p.w);
-        return new Vector4(p.x*s, p.y*s, p.z*s, 0);
-    }
-
-    // get the {x} s.t. lerp(a, b, x) is in [0, 1]
-    const getRange = (a: number, b: number) => {
-        // console.log('R', a, b);
-
-        if (a < 0) {
-            if (b <= 0) {
-                return null;
-            } else if (b <= 1) { // 0 < b
-                return [a/(a-b), 1];
-            } else { // 1 < b
-                return [a/(a-b), (1-a)/(b-a)];
-            }
-        } else if (a <= 1) { // 0 <= a
-            if (b < 0) {
-                return [0, a/(a-b)];
-            } else if (b <= 1) {
-                return [0, 1];
-            } else {
-                return [0, (1-a)/(b-a)];
-            }
-        } else { // 1 < a
-            if (b < 0) {
-                return [(a-1)/(a-b), a/(a-b)];
-            } else if (b < 1) {
-                return [(a-1)/(a-b), 1];
-            } else {
-                return null;
-            }
-        }
-    }
-
-    const getCommonRange = (a: Vector4, b: Vector4) => {
-        const rx = getRange(a.x, b.x);
-        const ry = getRange(a.y, b.y);
-        const rz = getRange(a.z, b.z);
-        if (ry) {
-            if (isNaN(ry[1])) {
-                console.log("Ry NaN", a, b);
-            }
-        }
-
-        if (rx === null || ry === null || rz === null) {
-            return null;
-        } else {
-            let ret = [
-                Math.max(rx[0], ry[0], rz[0]),
-                Math.min(rx[1], ry[1], rz[1])
-            ];
-            if (ret[0] >= ret[1]) {
-                return null;
-            }
-            return ret;
-        }
-    }
-
-    if (a.w < 0 && b.w >= 0) {
-        const min = 0;
-        const max = a.w / (a.w - b.w);
-        const pa = project(a);
-        const pb = project(b);
-        if (sub(pa, pb).length() < 1e-5) {
-            return null;
-        }
-        const range = getCommonRange(pa, pb);
-        if (range === null) {
-            return null;
-        }
-        const pr0 = pa.clone().lerp(pb, range[0]);
-        const pr1 = pa.clone().lerp(pb, range[1]);
-
-        const e_w = new Vector4(0, 0, 0, 1);
-        const lambda0 = getLineIntersection(e_w, pr0, a, b);
-        const lambda1 = getLineIntersection(e_w, pr1, a, b);
-        //  console.log("B", lineSegment, lambda0, lambda1, min, max);
-        let ret = [
-            Math.max(min, lambda0),
-            Math.min(max, lambda1)
-        ];
-        if (isNaN(ret[0]) || isNaN(ret[1])) {
-            console.log("B", lineSegment, lambda0, lambda1, min, max, range);
-        }
-        return ret
-    }
-    if (a.w >= 0 && b.w < 0) {
-
-
-        const min = a.w / (a.w - b.w);
-        const max = 1;
-        const pa = project(a);
-        const pb = project(b);
-        if (sub(pa, pb).length() < 1e-5) {
-            return null;
-        }
-        const range = getCommonRange(pa, pb);
-
-        if (range === null) {
-            return null;
-        }
-        const pr0 = pa.clone().lerp(pb, range[0]);
-        const pr1 = pa.clone().lerp(pb, range[1]);
-        // console.log("C", min, max, pa, pb, range);
-        const e_w = new Vector4(0, 0, 0, 1);
-        const lambda0 = getLineIntersection(e_w, pr0, a, b);
-        const lambda1 = getLineIntersection(e_w, pr1, a, b);
-        let ret = [
-            Math.max(min, lambda0),
-            Math.min(max, lambda1)
-        ];
-        if (isNaN(ret[0]) || isNaN(ret[1])) {
-            console.log("C", lineSegment, lambda0, lambda1, min, max, range);
-        }
-        return ret
-    }
-    if (a.w < 0 && b.w < 0) {
-        const min = 0;
-        const max = 1;
-        const pa = project(a);
-        const pb = project(b);
-        if (sub(pa, pb).length() < 1e-5) {
-            return null;
-        }
-        const range = getCommonRange(pa, pb);
-
-        if (range === null) {
-            return null;
-        }
-        const pr0 = pa.clone().lerp(pb, range[0]);
-        const pr1 = pa.clone().lerp(pb, range[1]);
-
-        const e_w = new Vector4(0, 0, 0, 1);
-        const lambda0 = getLineIntersection(e_w, pr0, a, b);
-        const lambda1 = getLineIntersection(e_w, pr1, a, b);
-        //  console.log("D", lambda0, lambda1, pa, pb, range);
-        let ret = [
-            Math.max(min, lambda0),
-            Math.min(max, lambda1)
-        ];
-        if (isNaN(ret[0]) || isNaN(ret[1])) {
-            console.log("D", lineSegment, lambda0, lambda1, min, max);
-        }
-        return ret
-    }
-}
 
 export {
     Object4,
@@ -1032,8 +910,6 @@ export {
     Scene4,
     Scene3WithMemoryTracker,
     getLineMaterial,
-    getLineIntersection,
-    computeOcclusionOnNormalizedGeometry,
     computeOcclusion,
     getVisibleIntervals
 }

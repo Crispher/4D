@@ -1,7 +1,6 @@
 import { Vector4 } from "three";
 import { LineMaterial } from 'three/examples/jsm/lines/LineMaterial'
 import { Object4, getLineMaterial, MaterialSet } from "./core";
-import {complex, exp} from 'mathjs';
 
 class Grid4 extends Object4 {
     public dims: number[];
@@ -186,61 +185,21 @@ class LineObject extends Object4 {
     }
 }
 
-class ParallelepipedCell extends Object4 {
+class SimplexCell extends Object4 {
     constructor(name: string, bases: Vector4[]) {
         super(name);
         this.G0.push(...bases);
-        this.G0.push(
-            bases[1].clone().add(bases[2]).sub(bases[0]),
-            bases[1].clone().add(bases[3]).sub(bases[0]),
-            bases[2].clone().add(bases[3]).sub(bases[0])
-        )
-        this.G0.push(
-            this.G0[4].clone().add(bases[3]).sub(this.G0[0])
-        );
         this.G1.push(
             {v_start: 0, v_end: 1}, //0
             {v_start: 0, v_end: 2},
             {v_start: 0, v_end: 3},
-            {v_start: 1, v_end: 4},
-            {v_start: 1, v_end: 5},
-            {v_start: 2, v_end: 4},
-            {v_start: 2, v_end: 6},
-            {v_start: 3, v_end: 5},
-            {v_start: 3, v_end: 6},
-            {v_start: 4, v_end: 7},
-            {v_start: 5, v_end: 7},
-            {v_start: 6, v_end: 7},
+            {v_start: 1, v_end: 2},
+            {v_start: 1, v_end: 3},
+            {v_start: 2, v_end: 3},
         )
         this.G3.push({
-            vertices: [0, 1, 2, 3, 4, 5, 6, 7],
+            vertices: [0, 1, 2, 3],
         });
-    }
-}
-
-
-class TwoManifoldMesh extends Object4 {
-    constructor(name: string, u_range: number[], v_range: number[], f: (u: number, v: number)=>Vector4) {
-        super(name);
-        for (let u of u_range) {
-            for (let i = 0; i < v_range.length - 1; i++) {
-                let v = v_range[i];
-                let v_next = v_range[i + 1];
-                this.G0.push(f(u, v), f(u, v_next));
-                this.G1.push({v_start: this.G0.length - 2, v_end: this.G0.length - 1});
-            }
-        }
-
-        for (let v of v_range) {
-            for (let i = 0; i < u_range.length - 1; i++) {
-                let u = u_range[i];
-                let u_next = u_range[i + 1];
-                // this.G0.push(f(u, v), f(u_next, v));
-                // this.G1.push({v_start: this.G0.length - 2, v_end: this.G0.length - 1});
-            }
-        }
-        this.materialSet.isDirectional = true
-
     }
 }
 
@@ -317,39 +276,6 @@ export class TwoManifoldMesh_2 extends Object4 {
     }
 }
 
-let getRange = (N: number, r: number=1) => {
-    let range = [];
-    for (let i = 0; i < N*r; i++) {
-        range.push(i / N);
-    }
-    return range;
-}
-class KleinBottle extends TwoManifoldMesh {
-    constructor(name: string, N: number, R: number, P: number, eps: number = 0.1) {
-        super(name, getRange(N, 0.4), getRange(N), (u, v) => {
-            return new Vector4(
-                R * (Math.cos(u / 2) * Math.cos(v) - Math.sin(u / 2) * Math.sin(2 * v)),
-                R * (Math.cos(u / 2) * Math.sin(v) + Math.sin(u / 2) * Math.cos(2 * v)),
-                P * Math.cos(u) * (1 + eps * Math.sin(v)),
-                P * Math.sin(u) * (1 + eps * Math.sin(v)) + 2
-            )
-        });
-    }
-}
-
-
-class ComplexFunctionPlot extends TwoManifoldMesh {
-    constructor(name: string, N: number, range: number, func: (t: any) => any) {
-        super(name, getRange(N), getRange(N), (u, v) => {
-            let x = (2 * u - 1) * range;
-            let y = (2 * v - 1) * range;
-            let z = func(complex(x, y));
-            return new Vector4(x, y, z.re, z.im);
-        });
-    }
-}
-
-
 const INVISIBLE = new MaterialSet()
 let w = 1.5;
 const WHITE = getLineMaterial(0xffffff, w);
@@ -362,10 +288,7 @@ export {
     Grid4,
     Tesseract,
     LineObject,
-    ParallelepipedCell,
-    TwoManifoldMesh,
-    KleinBottle,
-    ComplexFunctionPlot,
+    SimplexCell,
     WHITE,
     RED,
     GREEN,

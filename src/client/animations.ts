@@ -5,7 +5,7 @@ import { StereoEffect } from 'three/examples/jsm/effects/StereoEffect';
 import { LineMaterial } from 'three/examples/jsm/lines/LineMaterial';
 import { lerp } from 'three/src/math/MathUtils';
 import { Camera4, CameraQueue,  getLineMaterial,  MaterialSet,  Scene3WithMemoryTracker, Scene4 } from './math/core'
-import { Grid4, Tesseract, RED, GREEN, BLUE, YELLOW, WHITE, ParallelepipedCell, LineObject } from './math/primitives'
+import { Grid4, Tesseract, RED, GREEN, BLUE, YELLOW, WHITE, LineObject } from './math/primitives'
 
 
 interface Sample {

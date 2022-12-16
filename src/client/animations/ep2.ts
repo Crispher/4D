@@ -5,7 +5,7 @@ import { Camera, Renderer, Vector3, Vector4, WebGLRenderer } from 'three'
 import { LineMaterial } from 'three/examples/jsm/lines/LineMaterial';
 import { lerp } from 'three/src/math/MathUtils';
 import { Camera4, CameraQueue,  getLineMaterial,  MaterialSet,  Object4,  Scene3WithMemoryTracker, Scene4 } from '../math/core'
-import { Grid4, Tesseract, RED, GREEN, BLUE, YELLOW, WHITE, ParallelepipedCell, LineObject } from '../math/primitives'
+import { Grid4, Tesseract, RED, GREEN, BLUE, YELLOW, WHITE, LineObject } from '../math/primitives'
 
 
 let m = (a: number, b: number) => a * 60 + b;
