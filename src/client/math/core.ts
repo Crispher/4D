@@ -67,8 +67,8 @@ class MaterialSet {
     isDirectional: boolean = false;
 
     constructor(visible?: Material, occluded?: Material, isDirectional?: boolean) {
-        this.visible = visible;
-        this.occluded = occluded;
+        this.visible = visible || new LineMaterial({color: 0xffffff, linewidth: 0.001, vertexColors: true});
+        this.occluded = occluded || new LineMaterial({color: 0xffffff, linewidth: 0.001, dashed: true, dashScale: 50});
         this.isDirectional = isDirectional || false;
     }
 
@@ -114,39 +114,39 @@ interface Edge {
 
 interface Facet {
     vertices: number[] // of length 8
+    cached_inv_A?: Matrix4
 }
 
 
 interface Vertex {
-    v: Vector4,
-    n: Vector4
+    pos: Vector4,
+    normal?: Vector4,
+    cached_rpos?: Vector4,
+    cached_color?: number[]
+    angle?: number
 }
 
-
-interface SimplexCell {
-    // edges of a cell are not rendered, unless they are listed in G1
-    vertices: number[] // of length 4
-}
 
 class Object4 {
     name: string;
-    hidden: boolean = false;
     public G0_projected: Vector3[]; // projected vertices
-    readonly G0: Vector4[];
+    readonly G0: Vertex[];
     readonly G1: Edge[];
     readonly G2: Int32Array[];
     readonly G3: Facet[];
-    readonly S3: SimplexCell[];
 
     materialSet: MaterialSet;
 
-    constructor(name: string, G0:Vector4[]=[], G1:Edge[]=[], G2:Int32Array[]=[], G3:Facet[]=[], S3:SimplexCell[]=[]) {
+    constructor(name: string, G0:(Vector4|Vertex)[]=[], G1:Edge[]=[], G2:Int32Array[]=[], G3:Facet[]=[]) {
         this.name = name;
-        this.G0 = G0;
+        if (G0.length > 0 && G0[0] instanceof Vector4) {
+            this.G0 = (G0 as Vector4[]).map(v => {return {pos: v}});
+        } else {
+            this.G0 = G0 as Vertex[];
+        }
         this.G1 = G1;
         this.G2 = G2;
         this.G3 = G3;
-        this.S3 = S3;
         this.G0_projected = []
         this.materialSet = getLineMaterial(0xffffff, 1, false);
     }
@@ -170,7 +170,7 @@ class Object4 {
             v_end: this.G0.length + 1,
             materialSet: materialSet
         });
-        this.G0.push(a, b);
+        this.G0.push({pos:a}, {pos:b});
     }
 
     getVerticesPos(...v: number[]) {
@@ -179,22 +179,21 @@ class Object4 {
 
     scale(s: number) {
         for (let v of this.G0) {
-            v.multiplyScalar(s);
+            v.pos.multiplyScalar(s);
         }
         return this;
     }
 
-    computeOcclusion(viewPoint: Vector4, a: Vector4, b: Vector4) {
+    computeOcclusion(a: Vector4, b: Vector4) {
         const ret: Float32Array[] = [];
         for (const f of this.G3) {
-            const occludedRange = computeOcclusion(
-                this.getVerticesPos(f.vertices[0], f.vertices[1], f.vertices[2], f.vertices[3]),
-                [a, b],
-                viewPoint
+            if (f.cached_inv_A === undefined) continue;
+            const occludedRange = computeOcclusionWithPrecomputedInvA(
+                f.cached_inv_A,
+                [a, b]
             )
             if (occludedRange) {
                 if (occludedRange.length == 2) {
-
                     ret.push(new Float32Array(occludedRange));
                 }
             }
@@ -204,37 +203,8 @@ class Object4 {
 
     translate(dx: Vector4) {
         for (let v of this.G0) {
-            v.add(dx);
+            v.pos.add(dx);
         }
-    }
-
-    generateFacetBorder(facet: number, negativeMargin: number, materialSet?: MaterialSet) {
-        let f_vertices = this.G3[facet].vertices.map(v => this.G0[v]);
-        let f_center = average(f_vertices);
-        let f_new = f_vertices.map(
-            v => v.clone().lerp(f_center, negativeMargin)
-        );
-
-        let s = this.G0.length;
-        let e = this.G1.length;
-        this.G0.push(...f_new);
-        this.G1.push(
-            {v_start: s+0, v_end: s+1, materialSet}, //0
-            {v_start: s+0, v_end: s+2, materialSet},
-            {v_start: s+0, v_end: s+3, materialSet},
-            {v_start: s+1, v_end: s+4, materialSet},
-            {v_start: s+1, v_end: s+5, materialSet},
-            {v_start: s+2, v_end: s+4, materialSet},
-            {v_start: s+2, v_end: s+6, materialSet},
-            {v_start: s+3, v_end: s+5, materialSet},
-            {v_start: s+3, v_end: s+6, materialSet},
-            {v_start: s+4, v_end: s+7, materialSet},
-            {v_start: s+5, v_end: s+7, materialSet},
-            {v_start: s+6, v_end: s+7, materialSet},
-        );
-        this.G3.push({
-            vertices: [s, s+1, s+2, s+3, s+4, s+5, s+6, s+7]
-        });
     }
 }
 
@@ -494,7 +464,30 @@ class Scene4 {
 
     constructor(objects: Object4[]) {
         this.objects = objects;
+        this.directionalShading_v = this.directionalShading.map(
+            (colors) => colors.map(this.numberToRgb)
+        );
+        console.log(this.directionalShading_v);
+
+        // compute cached color for each object
+        for (const obj of this.objects) {
+            // for each vertex
+            for (let i = 0; i < obj.G0.length; i++) {
+                let v = obj.G0[i];
+                v.cached_color = this.getDirectionalLighting(v.normal);
+            }
+        }
     }
+
+
+    directionalShading: number[][] = [
+        [0xff2020, 0xffff00],
+        [0x7B68EE, 0x00ffff],
+        [0x80FF00, 0x3399ff],
+        [0xffffff, 0xff7f00]
+    ];
+
+    directionalShading_v: Vector3[][];
 
     find(name: string) {
         for (let obj of this.objects) {
@@ -512,17 +505,12 @@ class Scene4 {
         this.clearOcclusion();
         this.computeOcclusion(current_cam);
         for (const obj of this.objects) {
-            if (obj.hidden) {
-                continue;
-            }
 
             if (obj.G0_projected.length != obj.G0.length) {
-                console.log('allocate G0_projected');
-
-                obj.G0_projected = obj.G0.map(p => current_cam.project(p));
+                obj.G0_projected = obj.G0.map(p => current_cam.project(p.pos));
             } else {
                 for (let i = 0; i < obj.G0.length; i++) {
-                    obj.G0_projected[i] = current_cam.project(obj.G0[i], obj.G0_projected[i]);
+                    obj.G0_projected[i] = current_cam.project(obj.G0[i].pos, obj.G0_projected[i]);
                 }
             }
 
@@ -530,17 +518,8 @@ class Scene4 {
 
 
             for (const e of obj.G1) {
-                let localMaterial;
-
-                if (obj.materialSet.isDirectional && !e.materialSet) {
-                    e.materialSet = obj.materialSet.clone();
-                }
-
-                if (e.materialSet) {
-                    localMaterial = e.materialSet;
-                } else {
-                    localMaterial = obj.materialSet;
-                }
+                let color_1 = obj.G0[e.v_start].cached_color;
+                let color_2 = obj.G0[e.v_end].cached_color;
 
                 if (e.occludedIntervals) {
 
@@ -552,18 +531,18 @@ class Scene4 {
 
                     for (let switchPoint of e.occludedIntervals) {
                         if (switchPoint - start > 1e-5) {
-                            let vi = s.clone();
-                            vi.lerp(t, start);
-                            let vj = s.clone();
-                            vj.lerp(t, switchPoint);
-
+                            let vi = s.pos.clone();
+                            vi.lerp(t.pos, start);
+                            let vj = s.pos.clone();
+                            vj.lerp(t.pos, switchPoint);
 
                             let vi3 = current_cam.project(vi);
                             let vj3 = current_cam.project(vj);
                             if (occluded) {
-                                scene3.addLine(vi3, vj3, localMaterial.occluded);
+                                // scene3.addLine(vi3, vj3, [...color_1!, ...color_2!]);
                             } else {
-                                scene3.addLine(vi3, vj3, localMaterial.visible);
+
+                                scene3.addLine(vi3, vj3, [...color_1!, ...color_2!], e.materialSet!.visible!);
                             }
                         }
 
@@ -571,13 +550,8 @@ class Scene4 {
                         occluded = !occluded;
                     }
                 } else {
-                    if (localMaterial.isDirectional) {
-                        let mat = this.getDirectionalLighting(obj.G0[e.v_start], obj.G0[e.v_end], localMaterial!);
 
-                        scene3.addLine(V[e.v_start], V[e.v_end], mat);
-                    } else {
-                        scene3.addLine(V[e.v_start], V[e.v_end], localMaterial.visible);
-                    }
+                    scene3.addLine(V[e.v_start], V[e.v_end], [...color_1!, ...color_2!], e.materialSet!.visible!);
                 }
             }
         }
@@ -596,9 +570,9 @@ class Scene4 {
                 }
                 let opacity = camera.getOpacity(i)
                 for (const obj of cam_i.getFrame(0.5, opacity, camera.frameGap, camera.frameLinewidth)) {
-                    let V = obj.G0.map(p => current_cam.project(p));
+                    let V = obj.G0.map(p => current_cam.project(p.pos));
                     for (const e of obj.G1) {
-                        scene3.addLine(V[e.v_start], V[e.v_end], obj.materialSet.visible);
+                        scene3.addFrame(V[e.v_start], V[e.v_end], obj.materialSet.visible!);
                     }
                 }
             }
@@ -607,31 +581,57 @@ class Scene4 {
 
 
     computeOcclusion(cam: Camera4) {
+
+        // precompute rpos
         for (const obj of this.objects) {
-            if (obj.hidden) {
-                continue;
+            for (let v of obj.G0) {
+                v.cached_rpos = v.pos.clone().sub(cam.pos);
+                v.angle = v.cached_rpos!.dot(v.normal!) / v.cached_rpos!.length();
             }
+        }
+
+        // compute edge thickness
+        const max_thickness = 3;
+        const min_thickness = 0.1;
+        for (const obj of this.objects) {
+            for (let e of obj.G1) {
+                let t = Math.abs((obj.G0[e.v_start].angle! + obj.G0[e.v_end].angle!)/2);
+                t = t * t * t
+                if (e.materialSet) {
+                    e.materialSet!.withLinewidth(t * max_thickness + min_thickness);
+                } else {
+                    e.materialSet = new MaterialSet();
+                    e.materialSet!.withLinewidth(t * max_thickness + min_thickness);
+                }
+            }
+        }
+
+        // precompute inv_A
+        for (const obj of this.objects) {
+            for (let f of obj.G3) {
+                if (f.cached_inv_A) {
+                    computeInvA(f.vertices.map(i => obj.G0[i].cached_rpos!), f.cached_inv_A);
+                    console.log(f.cached_inv_A);
+                } else {
+                    f.cached_inv_A = computeInvA(f.vertices.map(i => obj.G0[i].cached_rpos!), f.cached_inv_A);
+                }
+            }
+        }
+
+        for (const obj of this.objects) {
             for (let e of obj.G1) {
                 e.occludedIntervalSet = [];
                 for (const occluder of this.objects) {
-                    if (occluder.hidden) {
-                        continue;
-                    }
-                    let I = occluder.computeOcclusion(cam.pos, obj.G0[e.v_start], obj.G0[e.v_end])
+                    let I = occluder.computeOcclusion(obj.G0[e.v_start].cached_rpos!, obj.G0[e.v_end].cached_rpos!)
                     e.occludedIntervalSet.push(...I);
                 }
             }
         }
 
         for (const obj of this.objects) {
-            if (obj.hidden) {
-                continue;
-            }
             for (const e of obj.G1) {
                 if (e.occludedIntervalSet) {
                     e.occludedIntervals = getVisibleIntervals(e.occludedIntervalSet);
-                    console.log(e.occludedIntervals);
-
                 }
             }
         }
@@ -651,6 +651,13 @@ class Scene4 {
         g = Math.floor(Math.abs(g) * 255 * (1-base)) + 255 * base;
         b = Math.floor(Math.abs(b) * 255 * (1-base)) + 255 * base;
         return (r << 16) + (g << 8) + b;
+    }
+
+    numberToRgb(n: number): Vector3 {
+        let r = (n >> 16) & 0xff;
+        let g = (n >> 8) & 0xff;
+        let b = n & 0xff;
+        return new Vector3(r / 255, g / 255, b / 255);
     }
 
     hsvToRgb(h: number, s: number, v: number) {
@@ -673,47 +680,35 @@ class Scene4 {
         return this.rgbToNumber(r, g, b);
     }
 
-    getDirectionalLighting(a: Vector4, b: Vector4, localMaterial: MaterialSet) : LineMaterial {
-        let n = b.clone().sub(a).normalize();
-        let real = n.x * n.x + n.w * n.w;
-        let input = n.x * n.x + n.y * n.y;
-
-        let dist = Math.max(a.lengthSq(), b.lengthSq());
-        let alpha = 1;
-        const cap = 6;
-        if (dist > cap && localMaterial.visible!.linewidth < 2 * 0.001) {
-            alpha = Math.pow(cap / dist, 2);
-        }
-
-        let color = this.hsvToRgb(0.6 * input, 0.8, 1);
-
-        let dash = 0.005;
-        let gap;
-        if (localMaterial.visible!.linewidth < 2 * 0.001) {
-            gap = 0.0;
+    getDirectionalLighting(normal?: Vector4) : number[] {
+        if (normal) {
+            let color = new Vector3(0, 0, 0);
+            for (let i = 0; i < 4; i++) {
+                if (normal.getComponent(i) > 0) {
+                    color.addScaledVector(this.directionalShading_v[i][0], normal.getComponent(i));
+                } else {
+                    color.addScaledVector(this.directionalShading_v[i][1], -normal.getComponent(i));
+                }
+            }
+            return [color.x, color.y, color.z];
         } else {
-            gap = (1-real) * dash * 3;
+            return [1,1,1];
         }
-        // let gap = 0;
-
-        let linewidth = localMaterial.visible!.linewidth;
-
-        if (localMaterial.local) {
-            localMaterial.local.linewidth = linewidth;
-            localMaterial.local.color = new Color(color);
-            localMaterial.local.dashSize = dash;
-            localMaterial.local.gapSize = gap;
-            localMaterial.local.opacity = alpha;
-            return localMaterial.local;
-        } else {
-            localMaterial.local = new LineMaterial({color: color, linewidth: linewidth, dashed: true, dashSize: dash, gapSize: gap, transparent: true, opacity: alpha});
-        }
-        return localMaterial.local;
     }
 }
 
 
 class Scene3WithMemoryTracker extends Scene {
+
+    defaultLineMaterial = new LineMaterial({
+        color: 0xffffff,
+        linewidth:0.003, // in world units with size attenuation, pixels otherwise
+        vertexColors: true,
+
+        dashed: false,
+        alphaToCoverage: true,
+    })
+
     geometries: LineGeometry[] = [];
     lines: Line2[] = [];
     constructor() {
@@ -729,12 +724,17 @@ class Scene3WithMemoryTracker extends Scene {
         this.add(line);
     }
 
-    addLine(a: Vector3, b: Vector3, material: Material | undefined) {
-        if (material) {
-            const geo = new LineGeometry();
-            geo.setPositions([a.x, a.y, a.z, b.x, b.y, b.z]);
-            this.addLineGeometry(geo, material);
-        }
+    addLine(a: Vector3, b: Vector3, color: number[], mat: LineMaterial) {
+        const geo = new LineGeometry();
+        geo.setPositions([a.x, a.y, a.z, b.x, b.y, b.z]);
+        geo.setColors(color);
+        this.addLineGeometry(geo, mat);
+    }
+
+    addFrame(a: Vector3, b: Vector3, mat: LineMaterial) {
+        const geo = new LineGeometry();
+        geo.setPositions([a.x, a.y, a.z, b.x, b.y, b.z]);
+        this.addLineGeometry(geo, mat);
     }
 
     clearScene() {
@@ -781,10 +781,98 @@ function getKeyMap(keyCode: number) {
     return undefined;
 }
 
-function computeOcclusion(f: Vector4[], lineSegment: Vector4[], viewpoint: Vector4) {
-    // todo
-    // return [];
 
+function computeInvA(f: Vector4[], A: Matrix4 | undefined) {
+    if (A === undefined) {
+        A = new Matrix4();
+    }
+
+    A.set(
+        f[0].x, f[1].x, f[2].x, f[3].x,
+        f[0].y, f[1].y, f[2].y, f[3].y,
+        f[0].z, f[1].z, f[2].z, f[3].z,
+        f[0].w, f[1].w, f[2].w, f[3].w
+    );
+
+    if (Math.abs(A.determinant()) < 1e-6) {
+        A = undefined;
+    } else {
+        console.log(A.determinant());
+
+        A.invert();
+    }
+    return A;
+}
+
+
+function computeOcclusionWithPrecomputedInvA(A: Matrix4, lineSegment: Vector4[]) {
+
+    let l_r = [
+        lineSegment[0].clone(),
+        lineSegment[1].clone()
+    ];
+
+    let eps = 1e-7;
+
+    let b_1 = l_r[1].sub(l_r[0]).applyMatrix4(A);
+    let b_0 = l_r[0].applyMatrix4(A).addScalar(-eps);
+
+    // alpha = b_0 + beta * b_1
+    let min = 0, max = 1;
+
+    // b_0 + beta * b1 >= eps
+    if (b_1.x > 0) {
+        min = Math.max(min, -b_0.x / b_1.x);
+    } else if (b_1.x < 0) {
+        max = Math.min(max, -b_0.x / b_1.x);
+    } else if (b_0.x < 0) {
+        return [];
+    }
+
+    if (b_1.y > 0) {
+        min = Math.max(min, -b_0.y / b_1.y);
+    } else if (b_1.y < 0) {
+        max = Math.min(max, -b_0.y / b_1.y);
+    } else if (b_0.y < 0) {
+        return [];
+    }
+
+    if (b_1.z > 0) {
+        min = Math.max(min, -b_0.z / b_1.z);
+    } else if (b_1.z < 0) {
+        max = Math.min(max, -b_0.z / b_1.z);
+    } else if (b_0.z < 0) {
+        return [];
+    }
+
+    if (b_1.w > 0) {
+        min = Math.max(min, -b_0.w / b_1.w);
+    } else if (b_1.w < 0) {
+        max = Math.min(max, -b_0.w / b_1.w);
+    } else if (b_0.w < 0) {
+        return [];
+    }
+
+    let  s_0 = b_0.x + b_0.y + b_0.z + b_0.w;
+    let  s_1 = b_1.x + b_1.y + b_1.z + b_1.w;
+
+    // s_0 + beta * s_1 >= 1 + eps
+
+    if (s_1 > 0) {
+        min = Math.max(min, (1 - s_0) / s_1);
+    } else if (s_1 < 0) {
+        max = Math.min(max, (1 - s_0) / s_1);
+    } else if (s_0 < 1) {
+        return [];
+    }
+
+    if (min >= max) {
+        return [];
+    }
+    return [min, max];
+}
+
+function computeOcclusion(f: Vector4[], lineSegment: Vector4[], viewpoint: Vector4) {
     let f_r = [
         f[0].clone().sub(viewpoint),
         f[1].clone().sub(viewpoint),
@@ -910,6 +998,6 @@ export {
     Scene4,
     Scene3WithMemoryTracker,
     getLineMaterial,
-    computeOcclusion,
+    // computeOcclusion,
     getVisibleIntervals
 }

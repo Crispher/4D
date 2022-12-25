@@ -2,40 +2,20 @@ import * as THREE from 'three'
 import { Camera, LineBasicMaterial, Plane, Scene, Vector3, Vector4, WebGLRenderer } from 'three'
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls'
 import { StereoEffect } from 'three/examples/jsm/effects/StereoEffect';
-import { Camera4, CameraQueue,  computeOcclusion,  Object4, Scene3WithMemoryTracker, Scene4 } from './math/core'
-import { Grid4, Tesseract, RED, GREEN, BLUE, YELLOW, WHITE, SimplexCell, LineObject, TwoManifoldMesh_2 } from './math/primitives'
+import { Camera4, CameraQueue, Object4, Scene3WithMemoryTracker, Scene4 } from './math/core'
+import { Grid4, Tesseract, RED, GREEN, BLUE, YELLOW, WHITE, SimplexCell, LineObject, TwoManifoldMesh_2, ThreeManifoldMesh } from './math/primitives'
 
 import {exp, sin, pow, tan, cos, cosh, tanh, sqrt, log, complex} from 'mathjs'
 
-import * as EP2 from './animations/ep2';
 import * as EP3 from './animations/ep3';
 import * as math from 'mathjs';
-
-
-let f = [
-    new Vector4(1, 0, 0, 0),
-    new Vector4(0, 1, 0, 0),
-    new Vector4(0, 0, 1, 0),
-    new Vector4(0, 0, 0, 1),
-]
-
-let l = [
-    new Vector4(1, 1, 1, 1),
-    new Vector4(0, 0, 0, 0),
-]
-
-let v = new Vector4(5,6,7,8)
-
-
-let result = computeOcclusion(f, l, v);
-console.log("result", result);
 
 
 
 /* 场景中的超立方体 */
 
 const tesseracts = [
-    new Tesseract('tess1').showFaceBorderOnly(),
+    new Tesseract('tess1'),
     // new Tesseract('tess2', new Vector4(0, 0, -1, 0)).showFaceBorderOnly(3.5),
     // new Tesseract('tess2', new Vector4(0, -1, -1, 0)), // occluded
     // new Tesseract('tess2', new Vector4(0, -1, 0, 0)).showFaceBorderOnly(2),
@@ -50,7 +30,7 @@ const tesseracts = [
 let N = 0;
 const grid = new Grid4('tess', [N+1, N, N, N]);
 const camera4 = new Camera4(
-    new Vector4(-20, 0, 0, 0),
+    new Vector4(-15, 0, 0, 0),
     // new Vector4(-4, 2, 2, 2), // 相机位置
     [[1, 0, 0, 0], [0, 1, 0, 0], [0, 0, 0, 1], [0, 0, 1, 0]].map((e: number[]) => {
         return new Vector4().fromArray(e);
@@ -71,25 +51,63 @@ let manifold_func = (u: number, v: number) => {
 }
 
 
-// exp_plot = new ComplexFunctionPlot('exp', 20, 3, c => pow(c, 2));
-// let exp_plot = new ComplexFunctionPlot('exp', 40, 7, log);
-let exp_plot = new TwoManifoldMesh_2('func', [-3, 3], [-3, 3], 40, 40, 3, 3, (u: number, v: number) => {
-    let z = pow(complex(u, v), 2) as math.Complex;
-    return new Vector4(u, v, z.im/2, z.re/2);
-});
+let f3 = new ThreeManifoldMesh(
+    'f',
+    [-0*Math.PI, 0.9*Math.PI],
+    [-1, 1],
+    [-1, 1],
+    8,4,4,
+    (u, v, w) => new Vector4(
+        cos(u),
+        sin(u),
+        v,
+        w
+    ),
+    (u:number, v:number, w: number) => new Vector4(
+        cos(u),
+        sin(u),
+        0,
+        0
+    )
+)
+
+
+let s3 = new ThreeManifoldMesh(
+    'f',
+    [-0*Math.PI, 0.5*Math.PI],
+    [0, 2*Math.PI],
+    [0, 2*Math.PI],
+    6,9,9,
+    (u, v, w) => new Vector4(
+        cos(u) * cos(v),
+        cos(u) * sin(v),
+        sin(u) * cos(w),
+        sin(u) * sin(w)
+    ),
+    (u:number, v:number, w: number) => new Vector4(
+        cos(u) * cos(v),
+        cos(u) * sin(v),
+        sin(u) * cos(w),
+        sin(u) * sin(w)
+    )
+)
+
+
+
 // 场景中加入超立方体和网格
 const scene4 = new Scene4([
     // ...tesseracts,
-    new SimplexCell('cell', [
-        new Vector4(0, 0, 0, 0),
-        new Vector4(0, 1, 0, 0),
-        new Vector4(0, 0, 1, 0),
-        new Vector4(0, 0, 0, 1),
-    ]),
-    new LineObject('line',
-        new Vector4(1, -2, 0.2, 0.5),
-        new Vector4(1, 2, 0.2, 0.5),
-    ).withMaterial(WHITE),
+    s3,
+    // new SimplexCell('cell', [
+    //     new Vector4(0, 0, 0, 0),
+    //     new Vector4(0, 1, 0, 0),
+    //     new Vector4(0, 0, 1, 0),
+    //     new Vector4(0, 0, 0, 1),
+    // ]),
+    // new LineObject('line',
+    //     new Vector4(1, -2, 0.2, 0.5),
+    //     new Vector4(1, 2, 0.2, 0.5),
+    // ).withMaterial(WHITE),
     // grid.getX(RED),
     // grid.getY(GREEN),
     // grid.getZ(BLUE),
@@ -105,7 +123,7 @@ const renderer = new THREE.WebGLRenderer({antialias: true})
 renderer.setSize(window.innerWidth, window.innerHeight)
 // renderer.setSize(3840, 2160)
 // renderer.setSize(1920, 1080)
-renderer.localClippingEnabled = true;
+// renderer.localClippingEnabled = true;
 document.body.appendChild(renderer.domElement)
 
 const controls = new OrbitControls(camera, renderer.domElement)
