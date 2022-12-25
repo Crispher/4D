@@ -313,20 +313,19 @@ export class ThreeManifoldMesh extends Object4 {
         for (let i = 0; i < u_division; i++) {
             for (let j = 0; j < v_division; j++) {
                 for (let k = 0; k < w_division; k++) {
-                    let index = gi(i, j, k);
                     this.G1.push(
                         {v_start: gi(i, j, k), v_end: gi(i, j, k+1)},
                         {v_start: gi(i, j, k), v_end: gi(i, j+1, k)},
                         {v_start: gi(i, j, k), v_end: gi(i+1, j, k)},
-                        {v_start: gi(i, j, k+1), v_end: gi(i, j+1, k+1)},
-                        {v_start: gi(i, j, k+1), v_end: gi(i+1, j, k+1)},
-                        {v_start: gi(i, j+1, k), v_end: gi(i+1, j+1, k)},
-                        {v_start: gi(i, j+1, k), v_end: gi(i, j+1, k+1)},
-                        {v_start: gi(i+1, j, k), v_end: gi(i+1, j+1, k)},
-                        {v_start: gi(i+1, j, k), v_end: gi(i+1, j, k+1)},
-                        {v_start: gi(i+1, j+1, k), v_end: gi(i+1, j+1, k+1)},
-                        {v_start: gi(i, j+1, k+1), v_end: gi(i+1, j+1, k+1)},
-                        {v_start: gi(i+1, j, k+1), v_end: gi(i+1, j+1, k+1)}
+                        // {v_start: gi(i, j, k+1), v_end: gi(i, j+1, k+1)},
+                        // {v_start: gi(i, j, k+1), v_end: gi(i+1, j, k+1)},
+                        // {v_start: gi(i, j+1, k), v_end: gi(i+1, j+1, k)},
+                        // {v_start: gi(i, j+1, k), v_end: gi(i, j+1, k+1)},
+                        // {v_start: gi(i+1, j, k), v_end: gi(i+1, j+1, k)},
+                        // {v_start: gi(i+1, j, k), v_end: gi(i+1, j, k+1)},
+                        // {v_start: gi(i+1, j+1, k), v_end: gi(i+1, j+1, k+1)},
+                        // {v_start: gi(i, j+1, k+1), v_end: gi(i+1, j+1, k+1)},
+                        // {v_start: gi(i+1, j, k+1), v_end: gi(i+1, j+1, k+1)}
                     )
 
                     this.G3.push(

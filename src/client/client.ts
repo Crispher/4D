@@ -30,7 +30,7 @@ const tesseracts = [
 let N = 0;
 const grid = new Grid4('tess', [N+1, N, N, N]);
 const camera4 = new Camera4(
-    new Vector4(-15, 0, 0, 0),
+    new Vector4(-12,0,0,0),
     // new Vector4(-4, 2, 2, 2), // 相机位置
     [[1, 0, 0, 0], [0, 1, 0, 0], [0, 0, 0, 1], [0, 0, 1, 0]].map((e: number[]) => {
         return new Vector4().fromArray(e);
@@ -53,10 +53,10 @@ let manifold_func = (u: number, v: number) => {
 
 let f3 = new ThreeManifoldMesh(
     'f',
-    [-0*Math.PI, 0.9*Math.PI],
+    [-0*Math.PI, 2*Math.PI],
     [-1, 1],
     [-1, 1],
-    8,4,4,
+    12,4,4,
     (u, v, w) => new Vector4(
         cos(u),
         sin(u),
@@ -97,7 +97,7 @@ let s3 = new ThreeManifoldMesh(
 // 场景中加入超立方体和网格
 const scene4 = new Scene4([
     // ...tesseracts,
-    s3,
+    f3,
     // new SimplexCell('cell', [
     //     new Vector4(0, 0, 0, 0),
     //     new Vector4(0, 1, 0, 0),

@@ -498,12 +498,20 @@ class Scene4 {
         throw 'obj not found';
     }
 
-    render(scene3: Scene3WithMemoryTracker, camera: CameraQueue) {
+    render(scene3: Scene3WithMemoryTracker, camera: CameraQueue, shortCutOcclusion: boolean = false) {
+
+
         let current_cam = camera.getPastCamera(0);
 
         // render objects
-        this.clearOcclusion();
-        this.computeOcclusion(current_cam);
+        if (!shortCutOcclusion) {
+            this.clearOcclusion();
+            this.precomputeShadingProperties(current_cam);
+            this.computeOcclusion(current_cam);
+        } else {
+            this.precomputeShadingProperties(current_cam);
+        }
+
         for (const obj of this.objects) {
 
             if (obj.G0_projected.length != obj.G0.length) {
@@ -516,42 +524,49 @@ class Scene4 {
 
             let V = obj.G0_projected;
 
+            if (!shortCutOcclusion) {
+                for (const e of obj.G1) {
+                    let color_1 = obj.G0[e.v_start].cached_color;
+                    let color_2 = obj.G0[e.v_end].cached_color;
 
-            for (const e of obj.G1) {
-                let color_1 = obj.G0[e.v_start].cached_color;
-                let color_2 = obj.G0[e.v_end].cached_color;
+                    if (e.occludedIntervals) {
 
-                if (e.occludedIntervals) {
+                        e.occludedIntervals.push(1);
+                        let occluded = false;
+                        let start = 0;
+                        let s = obj.G0[e.v_start];
+                        let t = obj.G0[e.v_end];
 
-                    e.occludedIntervals.push(1);
-                    let occluded = false;
-                    let start = 0;
+                        for (let switchPoint of e.occludedIntervals) {
+                            if (switchPoint - start > 1e-5) {
+                                let vi = s.pos.clone();
+                                vi.lerp(t.pos, start);
+                                let vj = s.pos.clone();
+                                vj.lerp(t.pos, switchPoint);
+
+                                let vi3 = current_cam.project(vi);
+                                let vj3 = current_cam.project(vj);
+                                if (occluded) {
+                                    // scene3.addLine(vi3, vj3, [...color_1!, ...color_2!]);
+                                } else {
+                                    scene3.addLine(vi3, vj3, [...color_1!, ...color_2!], e.materialSet!.visible!);
+                                }
+                            }
+
+                            start = switchPoint;
+                            occluded = !occluded;
+                        }
+                    } else {
+                        scene3.addLine(V[e.v_start], V[e.v_end], [...color_1!, ...color_2!], e.materialSet!.visible!);
+                    }
+                }
+            } else {
+                for (const e of obj.G1) {
                     let s = obj.G0[e.v_start];
                     let t = obj.G0[e.v_end];
-
-                    for (let switchPoint of e.occludedIntervals) {
-                        if (switchPoint - start > 1e-5) {
-                            let vi = s.pos.clone();
-                            vi.lerp(t.pos, start);
-                            let vj = s.pos.clone();
-                            vj.lerp(t.pos, switchPoint);
-
-                            let vi3 = current_cam.project(vi);
-                            let vj3 = current_cam.project(vj);
-                            if (occluded) {
-                                // scene3.addLine(vi3, vj3, [...color_1!, ...color_2!]);
-                            } else {
-
-                                scene3.addLine(vi3, vj3, [...color_1!, ...color_2!], e.materialSet!.visible!);
-                            }
-                        }
-
-                        start = switchPoint;
-                        occluded = !occluded;
+                    if (s.angle! <= 0 || t.angle! <= 0) {
+                        scene3.addLine(V[e.v_start], V[e.v_end], [...s.cached_color!, ...t.cached_color!], e.materialSet!.visible!);
                     }
-                } else {
-
-                    scene3.addLine(V[e.v_start], V[e.v_end], [...color_1!, ...color_2!], e.materialSet!.visible!);
                 }
             }
         }
@@ -580,8 +595,7 @@ class Scene4 {
     }
 
 
-    computeOcclusion(cam: Camera4) {
-
+    precomputeShadingProperties(cam: Camera4) {
         // precompute rpos
         for (const obj of this.objects) {
             for (let v of obj.G0) {
@@ -596,7 +610,7 @@ class Scene4 {
         for (const obj of this.objects) {
             for (let e of obj.G1) {
                 let t = Math.abs((obj.G0[e.v_start].angle! + obj.G0[e.v_end].angle!)/2);
-                t = t * t * t
+                t = t * t
                 if (e.materialSet) {
                     e.materialSet!.withLinewidth(t * max_thickness + min_thickness);
                 } else {
@@ -605,6 +619,9 @@ class Scene4 {
                 }
             }
         }
+    }
+
+    computeOcclusion(cam: Camera4) {
 
         // precompute inv_A
         for (const obj of this.objects) {
@@ -684,10 +701,11 @@ class Scene4 {
         if (normal) {
             let color = new Vector3(0, 0, 0);
             for (let i = 0; i < 4; i++) {
+                let n = normal.getComponent(i);
                 if (normal.getComponent(i) > 0) {
-                    color.addScaledVector(this.directionalShading_v[i][0], normal.getComponent(i));
+                    color.addScaledVector(this.directionalShading_v[i][1], n*n);
                 } else {
-                    color.addScaledVector(this.directionalShading_v[i][1], -normal.getComponent(i));
+                    color.addScaledVector(this.directionalShading_v[i][0], n*n);
                 }
             }
             return [color.x, color.y, color.z];
