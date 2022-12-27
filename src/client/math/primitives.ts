@@ -1,5 +1,4 @@
 import { Vector4 } from "three";
-import { LineMaterial } from 'three/examples/jsm/lines/LineMaterial'
 import { Object4, getLineMaterial, MaterialSet } from "./core";
 
 class Grid4 extends Object4 {
@@ -218,12 +217,15 @@ export class ThreeManifoldMesh extends Object4 {
             dw = (w_interval[1] - w_interval[0]) / (w_division + 1);
         }
 
+        let nu = u_division + 1;
+        let nv = v_division + 1;
+        let nw = w_division + 1;
 
-        for (let i = 0; i <= u_division; i++) {
+        for (let i = 0; i < nu; i++) {
             let u = u_interval[0] + i * du;
-            for (let j = 0; j <= v_division; j++) {
+            for (let j = 0; j < nv; j++) {
                 let v = v_interval[0] + j * dv;
-                for (let k = 0; k <= w_division; k++) {
+                for (let k = 0; k < nw; k++) {
                     let w = w_interval[0] + k * dw;
                     this.G0.push({pos:f(u, v, w), normal: n(u,v,w)});
                 }
@@ -231,18 +233,12 @@ export class ThreeManifoldMesh extends Object4 {
         }
 
         const gi = (i: number, j: number, k: number) => {
-            return (i%(u_division+1)) * (v_division + 1) * (w_division + 1) + (j%(v_division+1)) * (w_division + 1) + k%(w_division+1);
+            return (i%nu) * nv * nw + (j%nv) * nw + k%nw;
         }
 
-        for (let i = 0; i <= u_division; i++) {
-            for (let j = 0; j <= v_division; j++) {
-                for (let k = 0; k <= w_division; k++) {
-                    this.G1.push(
-                        {v_start: gi(i, j, k), v_end: gi(i, j, k+1)},
-                        {v_start: gi(i, j, k), v_end: gi(i, j+1, k)},
-                        {v_start: gi(i, j, k), v_end: gi(i+1, j, k)},
-                    )
-
+        for (let i = 0; i < nu; i++) {
+            for (let j = 0; j < nv; j++) {
+                for (let k = 0; k < nw; k++) {
                     if (loop[0]) {
                         this.G1.push(
                             {v_start: gi(i, j, k), v_end: gi((i+1)%(u_division+1), j, k)},
@@ -279,14 +275,16 @@ export class ThreeManifoldMesh extends Object4 {
                         }
                     }
 
+                    if (((i < u_division) || loop[0]) && ((j < v_division) || loop[1]) && ((k < w_division) || loop[2])) {
 
-                    this.G3.push(
-                        {vertices: [gi(i, j, k), gi(i, j, k+1), gi(i, j+1, k), gi(i+1, j, k)]},
-                        {vertices: [gi(i, j, k+1), gi(i, j+1, k), gi(i+1, j, k), gi(i+1, j+1, k+1)]},
-                        {vertices: [gi(i+1, j, k), gi(i, j+1, k), gi(i+1, j+1, k), gi(i+1, j+1, k+1)]}, // ij
-                        {vertices: [gi(i, j+1, k), gi(i, j, k+1), gi(i, j+1, k+1), gi(i+1, j+1, k+1)]}, // jk
-                        {vertices: [gi(i, j, k+1), gi(i+1, j, k), gi(i+1, j, k+1), gi(i+1, j+1, k+1)]}, // ki
-                    );
+                        this.G3.push(
+                            {vertices: [gi(i, j, k), gi(i, j, k+1), gi(i, j+1, k), gi(i+1, j, k)]},
+                            {vertices: [gi(i, j, k+1), gi(i, j+1, k), gi(i+1, j, k), gi(i+1, j+1, k+1)]},
+                            {vertices: [gi(i+1, j, k), gi(i, j+1, k), gi(i+1, j+1, k), gi(i+1, j+1, k+1)]}, // ij
+                            {vertices: [gi(i, j+1, k), gi(i, j, k+1), gi(i, j+1, k+1), gi(i+1, j+1, k+1)]}, // jk
+                            {vertices: [gi(i, j, k+1), gi(i+1, j, k), gi(i+1, j, k+1), gi(i+1, j+1, k+1)]}, // ki
+                        );
+                    }
                 }
             }
         }
@@ -345,7 +343,7 @@ export function getTesseractCells(): Object4[] {
         c.isClosedSurface = true;
         c.isExactNormal = true;
         c.minThickness = 3;
-        c.maxThickness = 4;
+        c.thicknessRange = 1;
     }
     return cells;
 }

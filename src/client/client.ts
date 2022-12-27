@@ -60,7 +60,7 @@ let f3 = new ThreeManifoldMesh(
 
 let s3 = new ThreeManifoldMesh(
     'f',
-    [-0*Math.PI, 0.5*Math.PI],
+    [0*Math.PI, 0.5*Math.PI],
     [0, 2*Math.PI],
     [0, 2*Math.PI],
     5,7,7,
@@ -78,7 +78,7 @@ let s3 = new ThreeManifoldMesh(
     ),
     [false, true, true]
 ).scale(0.5)
-s3.maxThickness = 4;
+s3.thicknessRange = 4;
 s3.minThickness = 0.5;
 s3.isClosedSurface = true;
 
@@ -97,9 +97,9 @@ let floor = new ThreeManifoldMesh(
 
 // 场景中加入超立方体和网格
 const scene4 = new Scene4([
-    // ...t_cells,
+    ...t_cells,
     floor,
-    s3,
+    s3.translate(new Vector4(0,1,0,0)),
 ])
 
 // 用来看三维照片的相机
@@ -159,8 +159,8 @@ function render() {
         scene4.render(scene, camQueue);
         sceneUpdated = false;
     }
-    // renderer.render(scene, camera);// 这里也换成effect.render（裸眼3D）
-    effect.render(scene, camera)
+    renderer.render(scene, camera);// 这里也换成effect.render（裸眼3D）
+    // effect.render(scene, camera)
     // capturer.capture(renderer.domElement); 把这行注释掉，似乎可以节省一点内存
 }
 

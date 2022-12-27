@@ -138,7 +138,7 @@ class Object4 {
     public isClosedSurface: boolean = false;
     public isExactNormal: boolean = false;
     public minThickness: number = 0.5;
-    public maxThickness: number = 3.0;
+    public thicknessRange: number = 3.0;
 
     materialSet: MaterialSet;
 
@@ -210,6 +210,7 @@ class Object4 {
         for (let v of this.G0) {
             v.pos.add(dx);
         }
+        return this;
     }
 }
 
@@ -576,7 +577,7 @@ class Scene4 {
                 for (const e of obj.G1) {
                     let s = obj.G0[e.v_start];
                     let t = obj.G0[e.v_end];
-                    if (s.angle! <= 0 && t.angle! <= 0) {
+                    if (s.angle! <= 0 || t.angle! <= 0) {
                         scene3.addLine(V[e.v_start], V[e.v_end], [...s.cached_color!, ...t.cached_color!], e.materialSet!.visible!);
                     }
                 }
@@ -622,10 +623,10 @@ class Scene4 {
                 let t = Math.abs((obj.G0[e.v_start].angle! + obj.G0[e.v_end].angle!)/2);
                 t = t * t
                 if (e.materialSet) {
-                    e.materialSet!.withLinewidth(t * obj.maxThickness + obj.minThickness);
+                    e.materialSet!.withLinewidth(t * obj.thicknessRange + obj.minThickness);
                 } else {
                     e.materialSet = new MaterialSet();
-                    e.materialSet!.withLinewidth(t * obj.maxThickness + obj.minThickness);
+                    e.materialSet!.withLinewidth(t * obj.thicknessRange + obj.minThickness);
                 }
             }
         }
