@@ -85,96 +85,6 @@ class Grid4 extends Object4 {
                 : mat.clone().withOpacity(opacity)
     }
 }
-class Tesseract extends Object4 {
-    // constructor(name: string, offset?: Vector4) {
-    //     super(name);
-    //     for (let i of [0, 1]) {
-    //         for (let j of [0, 1]) {
-    //             for (let k of [0, 1]) {
-    //                 for (let l of [0, 1]) {
-    //                     this.G0.push(new Vector4(i, j, k, l));
-    //                 }
-    //             }
-    //         }
-    //     }
-
-    //     this.G1.push(
-    //         {v_start: 0b0000, v_end: 0b0001},
-    //         {v_start: 0b0010, v_end: 0b0011},
-    //         {v_start: 0b0100, v_end: 0b0101},
-    //         {v_start: 0b0110, v_end: 0b0111},
-    //         {v_start: 0b1000, v_end: 0b1001},
-    //         {v_start: 0b1010, v_end: 0b1011},
-    //         {v_start: 0b1100, v_end: 0b1101},
-    //         {v_start: 0b1110, v_end: 0b1111},
-
-    //         {v_start: 0b0000, v_end: 0b0010}, // 8
-    //         {v_start: 0b0001, v_end: 0b0011},
-    //         {v_start: 0b0100, v_end: 0b0110},
-    //         {v_start: 0b0101, v_end: 0b0111},
-    //         {v_start: 0b1000, v_end: 0b1010},
-    //         {v_start: 0b1001, v_end: 0b1011},
-    //         {v_start: 0b1100, v_end: 0b1110},
-    //         {v_start: 0b1101, v_end: 0b1111},
-
-    //         {v_start: 0b0000, v_end: 0b0100}, // 16
-    //         {v_start: 0b0001, v_end: 0b0101},
-    //         {v_start: 0b0010, v_end: 0b0110},
-    //         {v_start: 0b0011, v_end: 0b0111},
-    //         {v_start: 0b1000, v_end: 0b1100}, // 20
-    //         {v_start: 0b1001, v_end: 0b1101},
-    //         {v_start: 0b1010, v_end: 0b1110},
-    //         {v_start: 0b1011, v_end: 0b1111},
-
-    //         {v_start: 0b0000, v_end: 0b1000}, // 24
-    //         {v_start: 0b0001, v_end: 0b1001},
-    //         {v_start: 0b0010, v_end: 0b1010},
-    //         {v_start: 0b0011, v_end: 0b1011},
-    //         {v_start: 0b0100, v_end: 0b1100}, // 28
-    //         {v_start: 0b0101, v_end: 0b1101},
-    //         {v_start: 0b0110, v_end: 0b1110},
-    //         {v_start: 0b0111, v_end: 0b1111},
-    //     )
-
-    //     let X0 = [0, 1, 2, 4, 3, 5, 6, 7];
-    //     let X1 = [8, 9, 10, 12, 0b1011, 0b1101, 0b1110, 0b1111];
-
-    //     let Y0 = [0b0000, 0b0001, 0b0010, 0b1000, 0b0011, 0b1001, 0b1010, 0b1011];
-    //     let Y1 = [0b0100, 0b0101, 0b0110, 0b1100, 0b0111, 0b1101, 0b1110, 0b1111];
-
-    //     let Z0 = [0b0000, 0b0001, 0b0100, 0b1000, 0b0101, 0b1001, 0b1100, 0b1101];
-    //     let Z1 = [0b0010, 0b0011, 0b0110, 0b1010, 0b0111, 0b1011, 0b1110, 0b1111];
-
-    //     let W0 = [0b0000, 0b0010, 0b0100, 0b1000, 0b0110, 0b1010, 0b1100, 0b1110];
-    //     let W1 = [0b0001, 0b0011, 0b0101, 0b1001, 0b0111, 0b1011, 0b1101, 0b1111];
-
-    //     let facets = [X0, X1, Y0, Y1, Z0, Z1, W0, W1].map(v => {
-    //         return {vertices: v}
-    //     })
-    //     this.G3.push(...facets);
-
-    //     if (offset) {
-    //         this.translate(offset);
-    //     }
-    // }
-
-    // showFaceBorderOnly(faceBorderLinewidth: number=3.5, showHidden?: boolean) {
-    //     this.materialSet = INVISIBLE;
-    //     let colors = [0xff2020, 0xffff00, 0x7B68EE, 0x00ffff, 0x80FF00, 0x3399ff, 0xffffff, 0xff7f00];
-    //     for (let i = 0; i < 8; i++) {
-    //         this.generateFacetBorder(i, 0.05, getLineMaterial(colors[i], faceBorderLinewidth, showHidden));
-    //     }
-    //     return this
-    // }
-    // showFaceBorderOnly_2(faceBorderLinewidth: number[], showHidden?: boolean) {
-    //     this.materialSet = INVISIBLE;
-    //     let colors = [0xff2020, 0xffff00, 0x7B68EE, 0x00ffff, 0x80FF00, 0x3399ff, 0xffffff, 0xff7f00];
-    //     for (let i = 0; i < 8; i++) {
-    //         this.generateFacetBorder(i, 0.05, getLineMaterial(colors[i], faceBorderLinewidth[i], showHidden));
-    //     }
-    //     return this
-    // }
-}
 
 
 class LineObject extends Object4 {
@@ -287,12 +197,26 @@ export class ThreeManifoldMesh extends Object4 {
         w_division: number,
         f: (u: number, v: number, w: number)=>Vector4,
         n: (u: number, v: number, w: number)=>Vector4,
+        loop: boolean[] = [false, false, false],
         linewidth?: number) {
         super(name);
 
-        let du = (u_interval[1] - u_interval[0]) / u_division;
-        let dv = (v_interval[1] - v_interval[0]) / v_division;
-        let dw = (w_interval[1] - w_interval[0]) / w_division;
+        let du, dv, dw;
+        if (!loop[0]) {
+            du = (u_interval[1] - u_interval[0]) / u_division;
+        } else {
+            du = (u_interval[1] - u_interval[0]) / (u_division + 1);
+        }
+        if (!loop[1]) {
+            dv = (v_interval[1] - v_interval[0]) / v_division;
+        } else {
+            dv = (v_interval[1] - v_interval[0]) / (v_division + 1);
+        }
+        if (!loop[2]) {
+            dw = (w_interval[1] - w_interval[0]) / w_division;
+        } else {
+            dw = (w_interval[1] - w_interval[0]) / (w_division + 1);
+        }
 
 
         for (let i = 0; i <= u_division; i++) {
@@ -307,26 +231,54 @@ export class ThreeManifoldMesh extends Object4 {
         }
 
         const gi = (i: number, j: number, k: number) => {
-            return i * (v_division + 1) * (w_division + 1) + j * (w_division + 1) + k;
+            return (i%(u_division+1)) * (v_division + 1) * (w_division + 1) + (j%(v_division+1)) * (w_division + 1) + k%(w_division+1);
         }
 
-        for (let i = 0; i < u_division; i++) {
-            for (let j = 0; j < v_division; j++) {
-                for (let k = 0; k < w_division; k++) {
+        for (let i = 0; i <= u_division; i++) {
+            for (let j = 0; j <= v_division; j++) {
+                for (let k = 0; k <= w_division; k++) {
                     this.G1.push(
                         {v_start: gi(i, j, k), v_end: gi(i, j, k+1)},
                         {v_start: gi(i, j, k), v_end: gi(i, j+1, k)},
                         {v_start: gi(i, j, k), v_end: gi(i+1, j, k)},
-                        // {v_start: gi(i, j, k+1), v_end: gi(i, j+1, k+1)},
-                        // {v_start: gi(i, j, k+1), v_end: gi(i+1, j, k+1)},
-                        // {v_start: gi(i, j+1, k), v_end: gi(i+1, j+1, k)},
-                        // {v_start: gi(i, j+1, k), v_end: gi(i, j+1, k+1)},
-                        // {v_start: gi(i+1, j, k), v_end: gi(i+1, j+1, k)},
-                        // {v_start: gi(i+1, j, k), v_end: gi(i+1, j, k+1)},
-                        // {v_start: gi(i+1, j+1, k), v_end: gi(i+1, j+1, k+1)},
-                        // {v_start: gi(i, j+1, k+1), v_end: gi(i+1, j+1, k+1)},
-                        // {v_start: gi(i+1, j, k+1), v_end: gi(i+1, j+1, k+1)}
                     )
+
+                    if (loop[0]) {
+                        this.G1.push(
+                            {v_start: gi(i, j, k), v_end: gi((i+1)%(u_division+1), j, k)},
+                        )
+                    } else {
+                        if (i < u_division) {
+                            this.G1.push(
+                                {v_start: gi(i, j, k), v_end: gi(i+1, j, k)},
+                            )
+                        }
+                    }
+
+                    if (loop[1]) {
+                        this.G1.push(
+                            {v_start: gi(i, j, k), v_end: gi(i, (j+1)%(v_division+1), k)},
+                        )
+                    } else {
+                        if (j < v_division) {
+                            this.G1.push(
+                                {v_start: gi(i, j, k), v_end: gi(i, j+1, k)},
+                            )
+                        }
+                    }
+
+                    if (loop[2]) {
+                        this.G1.push(
+                            {v_start: gi(i, j, k), v_end: gi(i, j, (k+1)%(w_division+1))},
+                        )
+                    } else {
+                        if (k < w_division) {
+                            this.G1.push(
+                                {v_start: gi(i, j, k), v_end: gi(i, j, k+1)},
+                            )
+                        }
+                    }
+
 
                     this.G3.push(
                         {vertices: [gi(i, j, k), gi(i, j, k+1), gi(i, j+1, k), gi(i+1, j, k)]},
@@ -341,6 +293,63 @@ export class ThreeManifoldMesh extends Object4 {
     }
 }
 
+
+export function getTesseractCells(): Object4[] {
+    let cells = [];
+
+    const gap = 0.001;
+    const r = 0.5;
+    const r0 = r - gap;
+
+    for (let k of [-1, 1]) {
+        cells.push(
+            new ThreeManifoldMesh(
+                'tesseract',
+                [-r0, r0],
+                [-r0, r0],
+                [-r0, r0],
+                1,1,1,
+                (u,v,w)=>new Vector4(u,v,w,k*r),
+                (u,v,w)=>new Vector4(0,0,0,k),
+            ),
+            new ThreeManifoldMesh(
+                'tesseract',
+                [-r0, r0],
+                [-r0, r0],
+                [-r0, r0],
+                1,1,1,
+                (u,v,w)=>new Vector4(u,w,k*r,v),
+                (u,v,w)=>new Vector4(0,0,k,0),
+            ),
+            new ThreeManifoldMesh(
+                'tesseract',
+                [-r0, r0],
+                [-r0, r0],
+                [-r0, r0],
+                1,1,1,
+                (u,v,w)=>new Vector4(u,k*r,v,w),
+                (u,v,w)=>new Vector4(0,k,0,0),
+            ),
+            new ThreeManifoldMesh(
+                'tesseract',
+                [-r0, r0],
+                [-r0, r0],
+                [-r0, r0],
+                1,1,1,
+                (u,v,w)=>new Vector4(k*r,u,v,w),
+                (u,v,w)=>new Vector4(k,0,0,0),
+            )
+        )
+    }
+    for (let c of cells) {
+        c.isClosedSurface = true;
+        c.isExactNormal = true;
+        c.minThickness = 3;
+        c.maxThickness = 4;
+    }
+    return cells;
+}
+
 const INVISIBLE = new MaterialSet()
 let w = 1.5;
 const WHITE = getLineMaterial(0xffffff, w);
@@ -351,7 +360,6 @@ const YELLOW = getLineMaterial(0xffff00, w);
 
 export {
     Grid4,
-    Tesseract,
     LineObject,
     SimplexCell,
     WHITE,

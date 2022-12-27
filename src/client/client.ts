@@ -3,31 +3,15 @@ import { Camera, LineBasicMaterial, Plane, Scene, Vector3, Vector4, WebGLRendere
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls'
 import { StereoEffect } from 'three/examples/jsm/effects/StereoEffect';
 import { Camera4, CameraQueue, Object4, Scene3WithMemoryTracker, Scene4 } from './math/core'
-import { Grid4, Tesseract, RED, GREEN, BLUE, YELLOW, WHITE, SimplexCell, LineObject, TwoManifoldMesh_2, ThreeManifoldMesh } from './math/primitives'
+import { Grid4, RED, GREEN, BLUE, YELLOW, WHITE, SimplexCell, LineObject, TwoManifoldMesh_2, ThreeManifoldMesh, getTesseractCells } from './math/primitives'
 
 import {exp, sin, pow, tan, cos, cosh, tanh, sqrt, log, complex} from 'mathjs'
 
 import * as EP3 from './animations/ep3';
-import * as math from 'mathjs';
 
 
 
-/* 场景中的超立方体 */
-
-const tesseracts = [
-    new Tesseract('tess1'),
-    // new Tesseract('tess2', new Vector4(0, 0, -1, 0)).showFaceBorderOnly(3.5),
-    // new Tesseract('tess2', new Vector4(0, -1, -1, 0)), // occluded
-    // new Tesseract('tess2', new Vector4(0, -1, 0, 0)).showFaceBorderOnly(2),
-    // new Tesseract('tess2', new Vector4(-1, -1, -1, 0)),
-    // new Tesseract('tess2', new Vector4(-1, 0, 0, 0)),
-    // // new Tesseract('tess2', new Vector4(-1, 0, -1, 0)),
-    // // new Tesseract('tess2', new Vector4(-1, -1, 0, 0)),
-    // new Tesseract('tess2', new Vector4(0, -1, -1, 1)),
-];
-
-
-let N = 0;
+let N = 1;
 const grid = new Grid4('tess', [N+1, N, N, N]);
 const camera4 = new Camera4(
     new Vector4(-12,0,0,0),
@@ -68,7 +52,9 @@ let f3 = new ThreeManifoldMesh(
         sin(u),
         0,
         0
-    )
+    ),
+    [true, false, false]
+
 )
 
 
@@ -77,7 +63,7 @@ let s3 = new ThreeManifoldMesh(
     [-0*Math.PI, 0.5*Math.PI],
     [0, 2*Math.PI],
     [0, 2*Math.PI],
-    6,9,9,
+    5,7,7,
     (u, v, w) => new Vector4(
         cos(u) * cos(v),
         cos(u) * sin(v),
@@ -89,28 +75,31 @@ let s3 = new ThreeManifoldMesh(
         cos(u) * sin(v),
         sin(u) * cos(w),
         sin(u) * sin(w)
-    )
-)
+    ),
+    [false, true, true]
+).scale(0.5)
+s3.maxThickness = 4;
+s3.minThickness = 0.5;
+s3.isClosedSurface = true;
 
+let t_cells = getTesseractCells();
+
+let floor = new ThreeManifoldMesh(
+    'floor',
+    [-1, 1],
+    [-1, 1],
+    [-1, 1],
+    2,2,2,
+    (u, v, w) => new Vector4(u,v,w,-0.6),
+    (u:number, v:number, w: number) => new Vector4(0,0,0,-1),
+)
 
 
 // 场景中加入超立方体和网格
 const scene4 = new Scene4([
-    // ...tesseracts,
-    f3,
-    // new SimplexCell('cell', [
-    //     new Vector4(0, 0, 0, 0),
-    //     new Vector4(0, 1, 0, 0),
-    //     new Vector4(0, 0, 1, 0),
-    //     new Vector4(0, 0, 0, 1),
-    // ]),
-    // new LineObject('line',
-    //     new Vector4(1, -2, 0.2, 0.5),
-    //     new Vector4(1, 2, 0.2, 0.5),
-    // ).withMaterial(WHITE),
-    // grid.getX(RED),
-    // grid.getY(GREEN),
-    // grid.getZ(BLUE),
+    // ...t_cells,
+    floor,
+    s3,
 ])
 
 // 用来看三维照片的相机
@@ -133,28 +122,45 @@ const scene = new Scene3WithMemoryTracker();
 
 var sceneUpdated = true;
 
+let keydownEvents: KeyboardEvent[] = [];
+
+// window.addEventListener('keydown', (e) => {
+//     camera4.keyboardEventHandler(e, 10, 1);
+//     sceneUpdated = true;
+// }, false);
+
 window.addEventListener('keydown', (e) => {
-    camera4.keyboardEventHandler(e, 10, 1);
-    sceneUpdated = true;
+    if (keydownEvents.filter((e2) => e2.key == e.key).length == 0) {
+        keydownEvents.push(e);
+    }
+}, false);
+
+window.addEventListener('keyup', (e) => {
+    keydownEvents = keydownEvents.filter((e2) => e2.key != e.key);
 }, false);
 
 // 用来把三维照片渲染成立体画面的渲染器，可以不用管
 let effect = new StereoEffect( renderer );
-// effect.setEyeSeparation(0.06);
+effect.setEyeSeparation(-0.034);
 // effect.setSize(window.innerWidth, window.innerHeight);
 
 // 渲染视频用的，可以不用管
 var capturer = new CCapture( { format: 'webm', framerate: 48} );
 
 function render() {
+    for (let e of keydownEvents) {
+        camera4.keyboardEventHandler(e, 12, 0.1);
+        sceneUpdated = true;
+    }
+
     if (sceneUpdated) {
         scene.clearScene();
         camQueue.pushCamera(camera4);
         scene4.render(scene, camQueue);
         sceneUpdated = false;
     }
-    renderer.render(scene, camera);// 这里也换成effect.render（裸眼3D）
-    // effect.render(scene, camera)
+    // renderer.render(scene, camera);// 这里也换成effect.render（裸眼3D）
+    effect.render(scene, camera)
     // capturer.capture(renderer.domElement); 把这行注释掉，似乎可以节省一点内存
 }
 
@@ -166,5 +172,5 @@ let animation_render = exp_plot_animation.getCallbackHandler(renderer, frameRate
 
 
 
-window.setInterval(render, 1000/24);
+window.setInterval(render, 1000/60);
 //  window.setInterval(animation_render, 1000/frameRate);

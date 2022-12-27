@@ -106,7 +106,6 @@ class MaterialSet {
 interface Edge {
     v_start: number,
     v_end: number,
-    occludedIntervalSet?: Float32Array[],
     occludedIntervals?: number[],
     materialSet?: MaterialSet
 }
@@ -114,6 +113,7 @@ interface Edge {
 
 interface Facet {
     vertices: number[] // of length 8
+    isEffectivelyHidden?: boolean,
     cached_inv_A?: Matrix4
 }
 
@@ -134,6 +134,11 @@ class Object4 {
     readonly G1: Edge[];
     readonly G2: Int32Array[];
     readonly G3: Facet[];
+
+    public isClosedSurface: boolean = false;
+    public isExactNormal: boolean = false;
+    public minThickness: number = 0.5;
+    public maxThickness: number = 3.0;
 
     materialSet: MaterialSet;
 
@@ -187,7 +192,7 @@ class Object4 {
     computeOcclusion(a: Vector4, b: Vector4) {
         const ret: Float32Array[] = [];
         for (const f of this.G3) {
-            if (f.cached_inv_A === undefined) continue;
+            if (f.cached_inv_A === undefined || f.isEffectivelyHidden) continue;
             const occludedRange = computeOcclusionWithPrecomputedInvA(
                 f.cached_inv_A,
                 [a, b]
@@ -249,9 +254,16 @@ class Camera4 {
         }
     }
 
-    move(i: number, ds: number) {
-        this.pos.add(multiplyScalar(this.orientation[i], ds));
-        this.updateCenter();
+    move(i: number, ds: number, fix_distance: boolean = false) {
+        if (!fix_distance) {
+            this.pos.add(multiplyScalar(this.orientation[i], ds));
+            this.updateCenter();
+        } else {
+            let d = this.pos.length();
+            this.pos.add(multiplyScalar(this.orientation[i], ds));
+            this.pos.normalize().multiplyScalar(d);
+            this.lookAt(new Vector4(0,0,0,0));
+        }
     }
 
     tilt(i: number, ds: number) {
@@ -310,7 +322,6 @@ class Camera4 {
     keyboardEventHandler(event: KeyboardEvent, accelerate: number = 1, tilt_accelerate: number = 1) {
         const keyCode = event.which;
         const keyMap = getKeyMap(keyCode);
-        console.log(keyMap, keyCode)
         if (keyMap === undefined) {
             return;
         }
@@ -322,7 +333,7 @@ class Camera4 {
         } else {
             const s = 0.02 * accelerate;
             const speed = keyMap.status === MotionStatus.POSITIVE ? s: -s;
-            this.move(keyMap.axis, speed);
+            this.move(keyMap.axis, speed, true);
         }
     }
 
@@ -467,7 +478,6 @@ class Scene4 {
         this.directionalShading_v = this.directionalShading.map(
             (colors) => colors.map(this.numberToRgb)
         );
-        console.log(this.directionalShading_v);
 
         // compute cached color for each object
         for (const obj of this.objects) {
@@ -529,26 +539,28 @@ class Scene4 {
                     let color_1 = obj.G0[e.v_start].cached_color;
                     let color_2 = obj.G0[e.v_end].cached_color;
 
+                    let s = obj.G0[e.v_start];
+                    let t = obj.G0[e.v_end];
+
                     if (e.occludedIntervals) {
 
                         e.occludedIntervals.push(1);
                         let occluded = false;
                         let start = 0;
-                        let s = obj.G0[e.v_start];
-                        let t = obj.G0[e.v_end];
+
 
                         for (let switchPoint of e.occludedIntervals) {
-                            if (switchPoint - start > 1e-5) {
-                                let vi = s.pos.clone();
-                                vi.lerp(t.pos, start);
-                                let vj = s.pos.clone();
-                                vj.lerp(t.pos, switchPoint);
-
-                                let vi3 = current_cam.project(vi);
-                                let vj3 = current_cam.project(vj);
+                            if (switchPoint - start > 1e-2) {
                                 if (occluded) {
                                     // scene3.addLine(vi3, vj3, [...color_1!, ...color_2!]);
                                 } else {
+                                    let vi = s.pos.clone();
+                                    vi.lerp(t.pos, start);
+                                    let vj = s.pos.clone();
+                                    vj.lerp(t.pos, switchPoint);
+
+                                    let vi3 = current_cam.project(vi);
+                                    let vj3 = current_cam.project(vj);
                                     scene3.addLine(vi3, vj3, [...color_1!, ...color_2!], e.materialSet!.visible!);
                                 }
                             }
@@ -564,7 +576,7 @@ class Scene4 {
                 for (const e of obj.G1) {
                     let s = obj.G0[e.v_start];
                     let t = obj.G0[e.v_end];
-                    if (s.angle! <= 0 || t.angle! <= 0) {
+                    if (s.angle! <= 0 && t.angle! <= 0) {
                         scene3.addLine(V[e.v_start], V[e.v_end], [...s.cached_color!, ...t.cached_color!], e.materialSet!.visible!);
                     }
                 }
@@ -605,17 +617,15 @@ class Scene4 {
         }
 
         // compute edge thickness
-        const max_thickness = 3;
-        const min_thickness = 0.1;
         for (const obj of this.objects) {
             for (let e of obj.G1) {
                 let t = Math.abs((obj.G0[e.v_start].angle! + obj.G0[e.v_end].angle!)/2);
                 t = t * t
                 if (e.materialSet) {
-                    e.materialSet!.withLinewidth(t * max_thickness + min_thickness);
+                    e.materialSet!.withLinewidth(t * obj.maxThickness + obj.minThickness);
                 } else {
                     e.materialSet = new MaterialSet();
-                    e.materialSet!.withLinewidth(t * max_thickness + min_thickness);
+                    e.materialSet!.withLinewidth(t * obj.maxThickness + obj.minThickness);
                 }
             }
         }
@@ -625,30 +635,48 @@ class Scene4 {
 
         // precompute inv_A
         for (const obj of this.objects) {
+            let nVisible = 0;
+            let nHidden = 0;
+
             for (let f of obj.G3) {
-                if (f.cached_inv_A) {
-                    computeInvA(f.vertices.map(i => obj.G0[i].cached_rpos!), f.cached_inv_A);
-                    console.log(f.cached_inv_A);
+                let vertices = f.vertices.map(i => obj.G0[i]);
+                if (vertices.some(v => v.angle! < 0) || !obj.isClosedSurface) {
+                    // all vertices facing away from camera
+                    // or the surface is not oriented
+                    nVisible++;
+
+                    f.isEffectivelyHidden = false
+
+                    if (f.cached_inv_A) {
+                        computeInvA(f.vertices.map(i => obj.G0[i].cached_rpos!), f.cached_inv_A);
+                    } else {
+                        f.cached_inv_A = computeInvA(f.vertices.map(i => obj.G0[i].cached_rpos!), f.cached_inv_A);
+                    }
                 } else {
-                    f.cached_inv_A = computeInvA(f.vertices.map(i => obj.G0[i].cached_rpos!), f.cached_inv_A);
+                    nHidden++;
+
+                    f.isEffectivelyHidden = true;
                 }
             }
+            console.log(obj.name, nVisible, nHidden, obj.G0.length);
+
         }
 
         for (const obj of this.objects) {
             for (let e of obj.G1) {
-                e.occludedIntervalSet = [];
-                for (const occluder of this.objects) {
-                    let I = occluder.computeOcclusion(obj.G0[e.v_start].cached_rpos!, obj.G0[e.v_end].cached_rpos!)
-                    e.occludedIntervalSet.push(...I);
+                if (obj.isExactNormal && obj.G0[e.v_start].angle! > 0) {
+                    e.occludedIntervals = [0, 1];
+                    continue;
                 }
-            }
-        }
 
-        for (const obj of this.objects) {
-            for (const e of obj.G1) {
-                if (e.occludedIntervalSet) {
-                    e.occludedIntervals = getVisibleIntervals(e.occludedIntervalSet);
+                let occludedIntervalSet: Float32Array[] = [];
+                for (const occluder of this.objects) {
+
+                    let I = occluder.computeOcclusion(obj.G0[e.v_start].cached_rpos!, obj.G0[e.v_end].cached_rpos!)
+                    occludedIntervalSet.push(...I);
+                }
+                if (occludedIntervalSet.length > 0) {
+                    e.occludedIntervals = getVisibleIntervals(occludedIntervalSet);
                 }
             }
         }
@@ -815,8 +843,6 @@ function computeInvA(f: Vector4[], A: Matrix4 | undefined) {
     if (Math.abs(A.determinant()) < 1e-6) {
         A = undefined;
     } else {
-        console.log(A.determinant());
-
         A.invert();
     }
     return A;
@@ -830,15 +856,16 @@ function computeOcclusionWithPrecomputedInvA(A: Matrix4, lineSegment: Vector4[])
         lineSegment[1].clone()
     ];
 
-    let eps = 1e-7;
+    const margin = 1e-5;
+    const minimumOcclusion = 1e-3;
+    const tolerance = 1e-3;
 
     let b_1 = l_r[1].sub(l_r[0]).applyMatrix4(A);
-    let b_0 = l_r[0].applyMatrix4(A).addScalar(-eps);
+    let b_0 = l_r[0].applyMatrix4(A).addScalar(margin);
 
-    // alpha = b_0 + beta * b_1
+    // alpha = b_0 + beta * b_1 >= -margin
     let min = 0, max = 1;
 
-    // b_0 + beta * b1 >= eps
     if (b_1.x > 0) {
         min = Math.max(min, -b_0.x / b_1.x);
     } else if (b_1.x < 0) {
@@ -871,114 +898,28 @@ function computeOcclusionWithPrecomputedInvA(A: Matrix4, lineSegment: Vector4[])
         return [];
     }
 
-    let  s_0 = b_0.x + b_0.y + b_0.z + b_0.w;
+    let  s_0 = b_0.x + b_0.y + b_0.z + b_0.w - 4 * margin;
     let  s_1 = b_1.x + b_1.y + b_1.z + b_1.w;
 
-    // s_0 + beta * s_1 >= 1 + eps
+    const numerical_one = 1 + tolerance;
 
     if (s_1 > 0) {
-        min = Math.max(min, (1 - s_0) / s_1);
+        min = Math.max(min, (numerical_one - s_0) / s_1);
     } else if (s_1 < 0) {
-        max = Math.min(max, (1 - s_0) / s_1);
-    } else if (s_0 < 1) {
+        max = Math.min(max, (numerical_one - s_0) / s_1);
+    } else if (s_0 < numerical_one) {
         return [];
     }
 
-    if (min >= max) {
-        return [];
-    }
-    return [min, max];
-}
-
-function computeOcclusion(f: Vector4[], lineSegment: Vector4[], viewpoint: Vector4) {
-    let f_r = [
-        f[0].clone().sub(viewpoint),
-        f[1].clone().sub(viewpoint),
-        f[2].clone().sub(viewpoint),
-        f[3].clone().sub(viewpoint)];
-
-    let l_r = [
-        lineSegment[0].clone().sub(viewpoint),
-        lineSegment[1].clone().sub(viewpoint)
-    ];
-
-    let A = new Matrix4();
-    A.set(
-        f_r[0].x, f_r[1].x, f_r[2].x, f_r[3].x,
-        f_r[0].y, f_r[1].y, f_r[2].y, f_r[3].y,
-        f_r[0].z, f_r[1].z, f_r[2].z, f_r[3].z,
-        f_r[0].w, f_r[1].w, f_r[2].w, f_r[3].w
-    );
-
-    if (Math.abs(A.determinant()) < 1e-6) {
-        return [];
-    }
-
-    A.invert();
-
-    let eps = 1e-4;
-
-    let b_1 = l_r[1].sub(l_r[0]).applyMatrix4(A);
-    let b_0 = l_r[0].applyMatrix4(A).addScalar(-eps);
-
-    // alpha = b_0 + beta * b_1
-
-    let min = 0, max = 1;
-
-    // b_0 + beta * b1 >= eps
-    if (b_1.x > 0) {
-        min = Math.max(min, -b_0.x / b_1.x);
-    } else if (b_1.x < 0) {
-        max = Math.min(max, -b_0.x / b_1.x);
-    } else if (b_0.x < 0) {
-        return [];
-    }
-
-    if (b_1.y > 0) {
-        min = Math.max(min, -b_0.y / b_1.y);
-    } else if (b_1.y < 0) {
-        max = Math.min(max, -b_0.y / b_1.y);
-    } else if (b_0.y < 0) {
-        return [];
-    }
-
-    if (b_1.z > 0) {
-        min = Math.max(min, -b_0.z / b_1.z);
-    } else if (b_1.z < 0) {
-        max = Math.min(max, -b_0.z / b_1.z);
-    } else if (b_0.z < 0) {
-        return [];
-    }
-
-    if (b_1.w > 0) {
-        min = Math.max(min, -b_0.w / b_1.w);
-    } else if (b_1.w < 0) {
-        max = Math.min(max, -b_0.w / b_1.w);
-    } else if (b_0.w < 0) {
-        return [];
-    }
-
-    let  s_0 = b_0.x + b_0.y + b_0.z + b_0.w;
-    let  s_1 = b_1.x + b_1.y + b_1.z + b_1.w;
-
-    // s_0 + beta * s_1 >= 1 + eps
-
-    if (s_1 > 0) {
-        min = Math.max(min, (1 - s_0) / s_1);
-    } else if (s_1 < 0) {
-        max = Math.min(max, (1 - s_0) / s_1);
-    } else if (s_0 < 1) {
-        return [];
-    }
-
-    if (min >= max) {
+    if (min + minimumOcclusion >= max) {
         return [];
     }
     return [min, max];
 }
 
 function getVisibleIntervals(I: Float32Array[]): number[] | undefined {
-    const eps = 1e-4;
+    const minimumVisibleLength = 1e-3;
+
     I.sort((a, b) => a[0] - b[0]);
     const J = [];
     if (I.length > 0) {
@@ -987,7 +928,7 @@ function getVisibleIntervals(I: Float32Array[]): number[] | undefined {
         let min = I[i][0];
         let max = I[i][1];
         while (true) {
-            if (j < I.length ) if (max + eps > I[j][0]) {
+            if (j < I.length ) if (max + minimumVisibleLength > I[j][0]) {
                 max = Math.max(max, I[j][1]);
                 j++;
                 continue;
