@@ -3,20 +3,107 @@
     <head>
         <meta charset="utf-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
-        <title>Three.js </title>
+        <title>4D Viewport by yugu233 </title>
         <script src="./CCapture.js"></script>
         <script src="./webm-writer-0.2.0.js"></script>
         <script src="./download.js"></script>
 
-        <style>
-            body {
-                overflow: hidden;
-                margin: 0px;
+        <style type="text/css">
+            html {
+                height: 100%;
             }
-        </style>
+            body {
+                margin: 0;
+                padding: 0;
+                background-color: #000;
+                color: #ffffff;
+                font-family: 'roboto condensed', sans-serif;
+                font-size: 13px;
+                line-height: 20px;
+                height: 100%;
+                overflow: hidden
+            }
+            #scroller{
+                position: fixed;
+                left: 0;
+                top: 0;
+                right: 0;
+                bottom: 0;
+                z-index: 100;
+                overflow: scroll;
+                background-color: #000;
+            }
+            a {
+                color: #fff;
+                text-decoration: none;
+                border-bottom: 1px dotted #fff;
+            }
+            a:hover {
+                border-bottom: 1px solid #fff
+            }
+            .buttons {
+                z-index: 100;
+                position: absolute;
+                overflow: hidden;
+            }
+            .buttons-right {
+                z-index: 100;
+                position: absolute;
+                overflow: hidden;
+                right: 0;
+            }
+            .card {
+                float: left;
+                color: #fff;
+                border-radius: 3px;
+                padding: 10px;
+                text-align: center;
+                width: 20px;
+                height: 20px;
+                border : 1px solid #444;
+                margin: 5px;
+
+                -webkit-touch-callout:none;
+                -webkit-user-select:none;
+                -khtml-user-select:none;
+                -moz-user-select:none;
+                -ms-user-select:none;
+                user-select:none;
+                -webkit-tap-highlight-color:rgba(0,0,0,0);
+            }
+            .right {
+                float: right;
+            }
+            #viewport {
+                position: absolute;
+                top: 32px;
+                left: 0;
+                right: 300px;
+                bottom: 0;
+            }
+            </style>
     </head>
 
     <body>
+
+        <div id="container"></div>
+        <div class="buttons">
+            <div>
+                <div class="card" id="q" style="background-color:#0046ad">Q</div>
+                <div class="card" id="w" style="background-color:#b71234">W</div>
+            </div>
+            <div class="card" id="a" style="background-color:#009b48">A</div>
+            <div class="card" id="s" style="background-color:#ff5800">S</div>
+        </div>
+
+        <div class="buttons buttons-right">
+            <div>
+                <div class="card right" id="e" style="background-color:#fff; color: #000">E</div>
+                <div class="card right" id="fullscreen" style="background-color:black"><svg fill="#ffffff" height="20px" width="20px" version="1.1" id="Capa_1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 0 288.824 288.824" xml:space="preserve" stroke="#ffffff"><g id="SVGRepo_bgCarrier" stroke-width="0"></g><g id="SVGRepo_iconCarrier"> <g> <path id="Arrow_Up_Right" d="M3.501,285.323c4.668,4.668,12.235,4.668,16.891,0L264.763,40.951v91.382 c0,6.641,5.39,12.03,12.03,12.03c6.641,0,12.03-5.39,12.03-12.03V12.03c0-3.188-1.239-6.268-3.501-8.529S279.981,0,276.793,0 H156.49c-6.641,0-12.03,5.39-12.03,12.03s5.39,12.03,12.03,12.03h91.382L3.501,268.432C-1.167,273.1-1.167,280.667,3.501,285.323z"></path> <g> </g> <g> </g> <g> </g> <g> </g> <g> </g> <g> </g> </g> </g></svg></div>
+            </div>
+            <div class="card right" id="d" style="background-color:#ffd500">D</div>
+        </div>
+
         <script type="module" src="bundle.js"></script>
     </body>
 </html>

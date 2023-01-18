@@ -37,6 +37,18 @@ function average(vec_array: Vector4[]) {
     return ret;
 }
 
+
+let size = 0.5;
+let d = 1 + 1e-4;
+const clippingPlanes = [
+    new Plane(new Vector3(0, 0, d), size),
+    new Plane(new Vector3(0, 0, -d), size),
+    new Plane(new Vector3(0, d, 0), size),
+    new Plane(new Vector3(0, -d, 0), size),
+    new Plane(new Vector3(d, 0, 0), size),
+    new Plane(new Vector3(-d, 0, 0), size),
+];
+
 type Material = LineMaterial;
 
 function getLineMaterial(color: number, width: number = 1, dashedWhenOccluded: boolean = false) {
@@ -66,8 +78,8 @@ class MaterialSet {
     local: Material | undefined;
     isDirectional: boolean = false;
 
-    constructor(visible?: Material, occluded?: Material, isDirectional?: boolean) {
-        this.visible = visible || new LineMaterial({color: 0xffffff, linewidth: 0.001, vertexColors: true});
+    constructor(visible?: Material, occluded?: Material, isDirectional?: boolean, clippingPlanes?: Plane[]) {
+        this.visible = visible || new LineMaterial({color: 0xffffff, linewidth: 0.001, vertexColors: true, clippingPlanes: clippingPlanes});
         this.occluded = occluded || new LineMaterial({color: 0xffffff, linewidth: 0.001, dashed: true, dashScale: 50});
         this.isDirectional = isDirectional || false;
     }
@@ -321,10 +333,10 @@ class Camera4 {
     }
 
     keyboardEventHandler(event: KeyboardEvent, accelerate: number = 1, tilt_accelerate: number = 1) {
-        const keyCode = event.which;
+        const keyCode = event.key;
         const keyMap = getKeyMap(keyCode);
         if (keyMap === undefined) {
-            return;
+            return false;
         }
 
         if (event.ctrlKey) {
@@ -336,6 +348,7 @@ class Camera4 {
             const speed = keyMap.status === MotionStatus.POSITIVE ? s: -s;
             this.move(keyMap.axis, speed, true);
         }
+        return true;
     }
 
     clone() {
@@ -626,6 +639,7 @@ class Scene4 {
                     e.materialSet!.withLinewidth(t * obj.thicknessRange + obj.minThickness);
                 } else {
                     e.materialSet = new MaterialSet();
+                    e.materialSet!.visible!.clippingPlanes = clippingPlanes;
                     e.materialSet!.withLinewidth(t * obj.thicknessRange + obj.minThickness);
                 }
             }
@@ -804,25 +818,25 @@ enum MotionStatus {
 };
 
 
-function getKeyMap(keyCode: number) {
+function getKeyMap(keyCode: string) {
     switch(keyCode) {
-        case 49: // 1
-        case 97: // numpad 1
+        case '1': // 1
+        case 'a': // numpad 1
             return { axis: 1, status: MotionStatus.NEGATIVE};
-        case 52: // 4
-        case 100: // numpad 4
+        case '4': // 4
+        case 'q': // numpad 4
             return { axis: 1, status: MotionStatus.POSITIVE}
-        case 50: // 2
-        case 98: // numpad 2
+        case '2': // 2
+        case 's': // numpad 2
             return { axis: 3, status: MotionStatus.NEGATIVE};
-        case 53: // 5
-        case 101: // numpad 5
+        case '5': // 5
+        case 'w': // numpad 5
             return { axis: 3, status: MotionStatus.POSITIVE};
-        case 51: // 3
-        case 99: // numpad 3
+        case '3': // 3
+        case 'd': // numpad 3
             return { axis: 2, status: MotionStatus.NEGATIVE};
-        case 54: // 6
-        case 102: // numpad 6
+        case '6': // 6
+        case 'e': // numpad 6
             return { axis: 2, status: MotionStatus.POSITIVE}
     }
     return undefined;
