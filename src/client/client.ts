@@ -3,11 +3,13 @@ import { Camera, LineBasicMaterial, Plane, Scene, Vector3, Vector4, WebGLRendere
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls'
 import { StereoEffect } from 'three/examples/jsm/effects/StereoEffect';
 import { Camera4, CameraQueue, Object4, Scene3WithMemoryTracker, Scene4 } from './math/core'
-import { Grid4, RED, GREEN, BLUE, YELLOW, WHITE, SimplexCell, LineObject, TwoManifoldMesh_2, ThreeManifoldMesh, getTesseractCells } from './math/primitives'
+import { Grid4, RED, GREEN, BLUE, YELLOW, WHITE, SimplexCell, LineObject, TwoManifoldMesh_2, ThreeManifoldMesh, getTesseractCells, FiveCell, SixteenCell, TwentyFourCell, getDuocylinder, getConicalCylinder, getSphericalCone, getCubinder, getSphericalCylinder } from './math/primitives'
 
 import {exp, sin, pow, tan, cos, cosh, tanh, sqrt, log, complex} from 'mathjs'
 
 import * as EP3 from './animations/ep3';
+import { CubinderAnimation, HypersphereAnimation, HypersphereAnimation2, HypersphereAnimation3, SpherinderAnimation } from './animations/ep5';
+import { ConeSweepingAnimation, CylinderSweepingAnimation, DuocylinderAnimation, EightCellAnimation, FiveCellAnimation, HypersphereAnimation_EP6, RotatingPolyCellAnimation, SixteenCellAnimation, SphereSweepingAnimation, SphericalConeAnimation, TwentyFourCellAnimation } from './animations/ep6';
 
 // get parameters from url
 const urlParams = new URLSearchParams(window.location.search);
@@ -100,57 +102,67 @@ function getScene(sceneId: string) {
             s3,
             floor
         ])
-    } else if (sceneId === "3") {
-        let s3 = new ThreeManifoldMesh(
-            'f',
-            [0*Math.PI, 2*Math.PI],
-            [-1,1],
-            [-1,1],
-            13, 4, 4,
-            (u, v, w) => new Vector4(
-                cos(u),
-                sin(u),
-                v,
-                w
-            ),
-            (u:number, v:number, w: number) => new Vector4(
-                cos(u),
-                sin(u),
-                0,
-                0
-            ),
-            [false, true, true]
-        ).scale(0.5)
+    } else if (sceneId === "5") {
+        // return a scene4 with a fivecell and a floor
+        let fivecell = new FiveCell("fivecell").scale(0.75);
         return new Scene4([
-            s3,
+            fivecell,
             floor
-        ])
-    } else if (sceneId === "4") {
-        let s3 = new ThreeManifoldMesh(
-            'f',
-            [0*Math.PI, Math.PI],
-            [0, 2*Math.PI],
-            [-1,1],
-            7, 9, 4,
-            (u, v, w) => new Vector4(
-                cos(u),
-                sin(u) * cos(v),
-                sin(u) * sin(v),
-                w
-            ),
-            (u:number, v:number, w: number) => new Vector4(
-                cos(u),
-                sin(u) * cos(v),
-                sin(u) * sin(v),
-                0
-            ),
-            [false, true, true]
-        ).scale(0.5)
+        ]);
+    } else if (sceneId === "6") {
+        let sixteenCell = new SixteenCell("sixteencell").scale(0.75).translate(new Vector4(0,0,0,0.25));
         return new Scene4([
-            s3,
+            sixteenCell,
             floor
-        ])
-    } else {
+        ]);
+    } else if (sceneId === "7") {
+        let twentyFourCell = new TwentyFourCell("twentyfourcell").scale(0.75).translate(new Vector4(0,0,0,0.25));
+        return new Scene4([
+            twentyFourCell,
+        //    floor
+        ]);
+    } else  if (sceneId === "8") {
+        let duocylinder = getDuocylinder();
+        // for (let s of duocylinder) {
+        //     s.scale(0.75).translate(new Vector4(0,0,0,0.25));
+        // }
+        return new Scene4([
+            ...duocylinder
+        ]);
+    } else if (sceneId === "9") {
+        let conicalCylinder = getConicalCylinder();
+        for (let s of conicalCylinder) {
+            s.translate(new Vector4(0,0,-0.5,-0.5));
+        }
+        return new Scene4([
+            ...conicalCylinder
+        ]);
+    } else if (sceneId === "10") {
+        let sphericalCone = getSphericalCone();
+        for (let sc of sphericalCone) {
+            sc.translate(new Vector4(0,0,0,-.75));
+        }
+        return new Scene4([
+            sphericalCone[0], sphericalCone[1]
+        ]);
+    } else if (sceneId === "11") {
+        let cubinder = getCubinder(2);
+        for (let sc of cubinder) {
+            sc.scale(0.8).translate(new Vector4(0,0,0,-.75));
+        }
+        return new Scene4([
+            ...cubinder
+        ]);
+    } else if (sceneId === "12") {
+        let sphericalCylindder = getSphericalCylinder(1.5);
+        for (let sc of sphericalCylindder) {
+            sc.translate(new Vector4(0,0,0,-.75));
+        }
+        return new Scene4([
+            ...sphericalCylindder
+        ]);
+    }
+    else {
         return new Scene4([]);
     }
 }
@@ -257,6 +269,17 @@ function render() {
     // capturer.capture(renderer.domElement); 把这行注释掉，似乎可以节省一点内存
 }
 
+// renderer.setSize(1920, 1080);
+// let frameRate = 36;
+// if (frameRate == 36) {
+//     renderer.setSize(3840, 2160);
+// }
+
+// let animation = new CylinderSweepingAnimation(frameRate);
+// let capturer = new CCapture( { format: 'webm', framerate: frameRate} )
+
+// let animation_render = animation.getCallbackHandler(renderer, frameRate >= 24 ? capturer : undefined);
+// window.setInterval(animation_render, 1000/frameRate);
+
 
 window.setInterval(render, 1000/20);
-//  window.setInterval(animation_render, 1000/frameRate);

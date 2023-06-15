@@ -69,7 +69,17 @@ function getLineMaterial(color: number, width: number = 1, dashedWhenOccluded: b
 }
 
 function getFrameMaterial(color: number, linewidth: number) {
-    return new MaterialSet(new LineMaterial({color: color, linewidth: linewidth*0.001}));
+    return new MaterialSet(
+        new LineMaterial({color: color, linewidth: linewidth*0.001, clippingPlanes: []}),
+        new LineMaterial({color: color, linewidth: linewidth*0.001, clippingPlanes: []})
+    );
+}
+
+function getEdgeMaterialSet(linewidth:number) {
+    return new MaterialSet(
+        new LineMaterial({color: 0xffffff, linewidth: 0.001 * linewidth, vertexColors: true, clippingPlanes: clippingPlanes}),
+        new LineMaterial({color: 0xffffff, linewidth: 0.001 * linewidth, dashed: true, dashScale: 50, dashSize: 0.5, gapSize: 0.5, clippingPlanes: clippingPlanes})
+    )
 }
 
 class MaterialSet {
@@ -80,7 +90,7 @@ class MaterialSet {
 
     constructor(visible?: Material, occluded?: Material, isDirectional?: boolean, clippingPlanes?: Plane[]) {
         this.visible = visible || new LineMaterial({color: 0xffffff, linewidth: 0.001, vertexColors: true, clippingPlanes: clippingPlanes});
-        this.occluded = occluded || new LineMaterial({color: 0xffffff, linewidth: 0.001, dashed: true, dashScale: 50});
+        this.occluded = occluded || new LineMaterial({color: 0xffffff, linewidth: 0.001, dashed: true, dashScale: 50, clippingPlanes: clippingPlanes});
         this.isDirectional = isDirectional || false;
     }
 
@@ -626,7 +636,11 @@ class Scene4 {
         for (const obj of this.objects) {
             for (let v of obj.G0) {
                 v.cached_rpos = v.pos.clone().sub(cam.pos);
-                v.angle = v.cached_rpos!.dot(v.normal!) / v.cached_rpos!.length();
+                try {
+                    v.angle = v.cached_rpos!.dot(v.normal!) / v.cached_rpos!.length();
+                } catch (e) {
+                    v.angle = 1;
+                }
             }
         }
 
@@ -638,7 +652,7 @@ class Scene4 {
                 if (e.materialSet) {
                     e.materialSet!.withLinewidth(t * obj.thicknessRange + obj.minThickness);
                 } else {
-                    e.materialSet = new MaterialSet();
+                    e.materialSet = getEdgeMaterialSet(t);
                     e.materialSet!.visible!.clippingPlanes = clippingPlanes;
                     e.materialSet!.withLinewidth(t * obj.thicknessRange + obj.minThickness);
                 }
@@ -665,6 +679,7 @@ class Scene4 {
                     if (f.cached_inv_A) {
                         computeInvA(f.vertices.map(i => obj.G0[i].cached_rpos!), f.cached_inv_A);
                     } else {
+                        f.cached_inv_A = undefined
                         f.cached_inv_A = computeInvA(f.vertices.map(i => obj.G0[i].cached_rpos!), f.cached_inv_A);
                     }
                 } else {
@@ -673,13 +688,11 @@ class Scene4 {
                     f.isEffectivelyHidden = true;
                 }
             }
-            console.log(obj.name, nVisible, nHidden, obj.G0.length);
-
         }
 
         for (const obj of this.objects) {
             for (let e of obj.G1) {
-                if (obj.isExactNormal && obj.G0[e.v_start].angle! > 0) {
+                if (obj.isExactNormal && obj.G0[e.v_start].angle! > 0 && obj.G0[e.v_end].angle! > 0) {
                     e.occludedIntervals = [0, 1];
                     continue;
                 }
